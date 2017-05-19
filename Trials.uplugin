@@ -1,0 +1,29 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "Trials",
+  "Description": "Ascend to victory using your movement skills! Do you think you have the fasted reflexes to solve and haste through the vast worlds of the Unreal universe?",
+  "Category": "UnrealTournament.GameMode",
+  "CreatedBy": "Eliot van Uytfanghe",
+  "CreatedByURL": "http://eliotvu.com",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "EnabledByDefault": true,
+  "CanContainContent": true,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "Trials",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win32",
+        "Win64",
+        "Linux"
+      ]
+    }
+  ]
+}
