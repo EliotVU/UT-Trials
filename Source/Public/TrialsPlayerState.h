@@ -15,7 +15,7 @@ class ATrialsPlayerState : public AUTPlayerState
     bool bIsObjectiveTimerActive;
 
 public:
-    UPROPERTY(Replicated)
+    UPROPERTY(Replicated, BlueprintReadOnly)
     ATrialsObjectiveInfo* ActiveObjectiveInfo;
 
     UPROPERTY(Replicated)
@@ -45,11 +45,6 @@ public:
 
     void SetObjective(ATrialsObjectiveInfo* objectiveInfo)
     {
-        if (objectiveInfo->Objective == nullptr)
-        {
-            UE_LOG(UT, Warning, TEXT("Can't activate objective, The objective info has no reference to an objective!"));
-            return;
-        }
         ActiveObjectiveInfo = objectiveInfo;
     }
 

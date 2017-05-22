@@ -7,6 +7,24 @@
 #include "UTATypes.h"
 #include "TrialsPlayerState.h"
 
+ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
+{
+    SetReplicates(true);
+    bAlwaysRelevant = true;
+    NetPriority = 1.0;
+}
+
+void ATrialsObjective::BeginPlay()
+{
+    if (GetWorld()->IsNetMode(NM_DedicatedServer))
+    {
+        return;
+    }
+    auto* HUD = Cast<AUTHUD>(GetWorld()->GetFirstPlayerController()->MyHUD);
+    HUD->AddPostRenderedActor(this);
+}
+
 FVector ATrialsObjective::GetAdjustedScreenPosition(UCanvas* Canvas, const FVector& WorldPosition, const FVector& ViewPoint, const FVector& ViewDir, float Dist, float Edge, bool& bDrawEdgeArrow)
 {
     FVector Cross = (ViewDir ^ FVector(0.f, 0.f, 1.f)).GetSafeNormal();
@@ -50,23 +68,23 @@ FVector ATrialsObjective::GetAdjustedScreenPosition(UCanvas* Canvas, const FVect
 void ATrialsObjective::PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVector CameraPosition, FVector CameraDir)
 {
     ATrialsPlayerState* ViewerPS = PC ? Cast<ATrialsPlayerState>(PC->PlayerState) : nullptr;
-    ATrialsGameState* UTGS = GetWorld()->GetGameState<ATrialsGameState>();
+    auto* UTGS = GetWorld()->GetGameState<ATrialsGameState>();
 
-    if (!ViewerPS || !UTGS)
+    if (!ViewerPS || !UTGS || !ObjectiveInfo)
     {
         return;
     }
 
     // Don't render this objective if the player is going for a different objective.
-    if( ViewerPS->ActiveObjectiveInfo != nullptr && ViewerPS->ActiveObjectiveInfo->Objective != this )
+    if (ViewerPS->ActiveObjectiveInfo != nullptr && ViewerPS->ActiveObjectiveInfo != ObjectiveInfo)
     {
         return;
     }
 
-    AUTPlayerController* UTPC = Cast<AUTPlayerController>(PC);
+    auto* UTPC = Cast<AUTPlayerController>(PC);
     const bool bIsViewTarget = (PC->GetViewTarget() == this);
     FVector WorldPosition = GetActorLocation();
-    if (UTPC != NULL && !UTGS->IsMatchIntermission() 
+    if (UTPC != nullptr && !UTGS->IsMatchIntermission() 
         && !UTGS->HasMatchEnded() 
         && ((FVector::DotProduct(CameraDir, (WorldPosition - CameraPosition)) > 0.0f))
         && (UTPC->MyUTHUD == nullptr || !UTPC->MyUTHUD->bShowScores))
@@ -75,7 +93,7 @@ void ATrialsObjective::PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVe
         float Scale = Canvas->ClipX / 1920.f;
         UFont* SmallFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->SmallFont;
 
-        FText ObjectiveTitle = Title;
+        FText ObjectiveTitle = ObjectiveInfo->Title;
         Canvas->TextSize(SmallFont, ObjectiveTitle.ToString(), TextXL, YL, Scale, Scale);
         FVector ViewDir = UTPC->GetControlRotation().Vector();
         float Dist = (CameraPosition - GetActorLocation()).Size();
@@ -86,7 +104,7 @@ void ATrialsObjective::PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVe
         if (XPos < Canvas->ClipX || XPos + TextXL < 0.0f)
         {
             FFormatNamedArguments Args;
-            Args.Add("Title", Title);
+            Args.Add("Title", ObjectiveTitle);
 
             FText NumberText = FText::AsNumber(int32(0.01f*Dist));
             Args.Add("Dist", NumberText);

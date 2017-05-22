@@ -22,36 +22,25 @@ void ATrialsObjectiveVolume::ActorEnteredVolume(class AActor* Other)
         return;
     }
 
-    ATrialsPlayerState* PS = Cast<ATrialsPlayerState>(p->PlayerState);
-    if (PS == nullptr) 
+    AUTPlayerController* PC = Cast<AUTPlayerController>(p->Controller);
+    if (PC != nullptr)
     {
-        return;
+        ObjectiveInfo->ActivateObjective(PC);
     }
-
-    // Start objective
-    PS->SetObjective(ObjectiveInfo);
 }
 
 void ATrialsObjectiveVolume::ActorLeavingVolume(AActor* Other)
 {
     Super::ActorLeavingVolume(Other);
-
     APawn* p = Cast<APawn>(Other);
     if (p == nullptr)
     {
         return;
     }
 
-    ATrialsPlayerState* PS = Cast<ATrialsPlayerState>(p->PlayerState);
-    if (PS == nullptr)
+    AUTPlayerController* PC = Cast<AUTPlayerController>(p->Controller);
+    if (PC != nullptr)
     {
-        return;
+        ObjectiveInfo->DisableObjective(PC, true);
     }
-
-    if (PS->ActiveObjectiveInfo == nullptr) 
-    {
-        return; // fucker spawned inside the objective volume without touching it first?
-    }
-
-    PS->StartObjectiveTimer();
 }

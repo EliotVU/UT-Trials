@@ -1,21 +1,18 @@
 #pragma once
 
-#include "UTGameObjective.h"
+#include "TrialsObjectiveInfo.h"
 #include "TrialsObjective.generated.h"
 
-UCLASS(Blueprintable)
-class TRIALS_API ATrialsObjective : public AUTGameObjective
+UCLASS(abstract, Blueprintable)
+class TRIALS_API ATrialsObjective : public AActor
 {
-	GENERATED_BODY()
+    GENERATED_UCLASS_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = Objective)
+    ATrialsObjectiveInfo* ObjectiveInfo;
 	
-public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
-    FText Title;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
-    FText Description;
-
-    virtual void PostRenderFor(APlayerController *PC, UCanvas *Canvas, FVector CameraPosition, FVector CameraDir) override;
+    virtual void BeginPlay() override;
+    virtual void PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVector CameraPosition, FVector CameraDir) override;
     virtual FVector GetAdjustedScreenPosition(UCanvas* Canvas, const FVector& WorldPosition, const FVector& ViewPoint, const FVector& ViewDir, float Dist, float Edge, bool& bDrawEdgeArrow);
 
 private:

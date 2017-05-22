@@ -6,6 +6,10 @@
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
+    SetReplicates(true);
+    bAlwaysRelevant = true;
+    NetPriority = 1.0;
+
     // N/A
     DevRecordTime = -1;
     RecordTime = -1;
@@ -15,10 +19,6 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 void ATrialsObjectiveInfo::BeginPlay()
 {
     RecordTime = DevRecordTime;
-
-    if (!Objective || GetWorld()->IsNetMode(NM_DedicatedServer)) return;
-    AUTHUD* HUD = Cast<AUTHUD>(GetWorld()->GetFirstPlayerController()->MyHUD);
-    HUD->AddPostRenderedActor(Objective);
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
@@ -26,26 +26,56 @@ AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
     return this->PlayerStart;
 }
 
-void ATrialsObjectiveInfo::ObjectiveTriggered(AUTPlayerController* PC)
+void ATrialsObjectiveInfo::ActivateObjective(AUTPlayerController* PC)
 {
-    if (Role != ROLE_Authority) return;
+    if (PC == nullptr)
+    {
+        return;
+    }
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (PS->ActiveObjectiveInfo != this)
+    {
+        PS->SetObjective(this);
+    }
+    PS->StartObjectiveTimer();
+}
 
-    ATrialsGameMode* GM = Cast<ATrialsGameMode>(GetWorld()->GetAuthGameMode());
-    GM->ScoreTrialObjective(PC, this);
+void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
+{
+    auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
+    if (GM != nullptr)
+    {
+        GM->ScoreTrialObjective(PC, this);
+        OnCompleteObjective(PC);
+    }
+}
+
+void ATrialsObjectiveInfo::DisableObjective(AUTPlayerController* PC, bool bDeActivate /*= false*/)
+{
+    if (PC == nullptr)
+    {
+        return;
+    }
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (bDeActivate && PS->ActiveObjectiveInfo == this)
+    {
+        PS->SetObjective(nullptr);
+    }
+    PS->EndObjectiveTimer();
 }
 
 bool ATrialsObjectiveInfo::IsEnabled(AUTPlayerController* PC)
 {
     if (PC == nullptr) return false;
-    ATrialsPlayerState* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS == nullptr) return false;
+
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     return PS->ActiveObjectiveInfo == this;
 }
 
 bool ATrialsObjectiveInfo::IsActive(AUTPlayerController* PC)
 {
     if (PC == nullptr) return false;
-    ATrialsPlayerState* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS == nullptr) return false;
+
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     return PS->ActiveObjectiveInfo == this && PS->bIsObjectiveTimerActive;
 }
