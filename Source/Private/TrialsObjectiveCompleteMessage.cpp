@@ -12,18 +12,18 @@ UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FOb
     MessageSlot = FName(TEXT("MajorRewardMessage"));
 
     bIsConsoleMessage = false;
-    bIsStatusAnnouncement = false;
+    bIsStatusAnnouncement = true;
 
     ObjectiveCompletedText = NSLOCTEXT("Trials", "ObjectiveCompleted", "{Player1} completed {Title} in {Time} seconds!");
 }
 
 FText UTrialsObjectiveCompleteMessage::GetText(int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
 {
-    ATrialsPlayerState* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);
-    ATrialsObjectiveInfo* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
+    auto* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);
+    auto* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
 
     FFormatNamedArguments Args;
-    Args.Add("Title", ScoredObjInfo->Objective->Title);
+    Args.Add("Title", ScoredObjInfo->Title);
     Args.Add("Player1", FText::FromString(ScorerPS->PlayerName));
 
     FText message;
