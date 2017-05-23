@@ -1,5 +1,6 @@
 #include "Trials.h"
 #include "TrialsObjectiveInfo.h"
+#include "TrialsObjectiveSetMessage.h"
 #include "TrialsPlayerState.h"
 #include "TrialsGameMode.h"
 
@@ -36,6 +37,7 @@ void ATrialsObjectiveInfo::ActivateObjective(AUTPlayerController* PC)
     if (PS->ActiveObjectiveInfo != this)
     {
         PS->SetObjective(this);
+        PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 0, PS, nullptr, this);
     }
     PS->StartObjectiveTimer();
 }
@@ -60,6 +62,7 @@ void ATrialsObjectiveInfo::DisableObjective(AUTPlayerController* PC, bool bDeAct
     if (bDeActivate && PS->ActiveObjectiveInfo == this)
     {
         PS->SetObjective(nullptr);
+        PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
     }
     PS->EndObjectiveTimer();
 }
