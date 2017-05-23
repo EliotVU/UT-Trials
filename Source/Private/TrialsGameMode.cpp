@@ -21,6 +21,29 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     bTrackKillAssists = false;
 }
 
+void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
+{
+    //PlayerPawn->bCanBeDamaged = false;
+    Super::SetPlayerDefaults(PlayerPawn);
+}
+
+bool ATrialsGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Momentum, APawn* Injured, AController* InstigatedBy, const FHitResult& HitInfo, AActor* DamageCauser, TSubclassOf<UDamageType> DamageType)
+{
+    if (InstigatedBy != nullptr && InstigatedBy != Injured->Controller && UTGameState->OnSameTeam(InstigatedBy, Injured))
+    {
+        // Remove team boosting.
+        Momentum = FVector::ZeroVector;
+        Damage = 0; // Although weapons shoot through team mates, radius damage could still be dealt to team mates.
+        AUTPlayerController* InstigatorPC = Cast<AUTPlayerController>(InstigatedBy);
+        if (InstigatorPC && Cast<AUTPlayerState>(Injured->PlayerState))
+        {
+            ((AUTPlayerState *)(Injured->PlayerState))->AnnounceSameTeam(InstigatorPC);
+        }
+    }
+    Super::ModifyDamage_Implementation(Damage, Momentum, Injured, InstigatedBy, HitInfo, DamageCauser, DamageType);
+    return true;
+}
+
 bool ATrialsGameMode::AllowSuicideBy(AUTPlayerController* PC)
 {
     return PC->GetPawn() != nullptr && GetWorld()->TimeSeconds - PC->GetPawn()->CreationTime > 1.25f;
@@ -35,6 +58,17 @@ AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, con
         return PS->ActiveObjectiveInfo->GetPlayerSpawn(Player);
     }
     return Super::FindPlayerStart_Implementation(Player, IncomingName);
+}
+
+// Don't drop any items, only discard.
+// FIXME: Players can still drop items via feign death and possibly other methods, but there is no option to disable dropping provided by Epic.
+void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
+{
+    AUTCharacter* UTC = Cast<AUTCharacter>(Other);
+    if (UTC != nullptr)
+    {
+        UTC->DiscardAllInventory();
+    }
 }
 
 void ATrialsGameMode::ScoreTrialObjective(AUTPlayerController* PC, ATrialsObjectiveInfo* objInfo)
