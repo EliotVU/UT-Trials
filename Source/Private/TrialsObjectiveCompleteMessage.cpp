@@ -7,60 +7,68 @@
 UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    Lifetime = 3.0f;
     MessageArea = FName(TEXT("Announcements"));
     MessageSlot = FName(TEXT("MajorRewardMessage"));
 
-    bIsConsoleMessage = false;
-    bIsStatusAnnouncement = true;
+    Lifetime = 3.0f;
+    AnnouncementDelay = 1.f;
 
-    ObjectiveCompletedText = NSLOCTEXT("Trials", "ObjectiveCompleted", "{Player1} completed {Title} in {Time} seconds!");
+    bIsPartiallyUnique = true;
+    bIsConsoleMessage = false;
+    bIsStatusAnnouncement = false;
+
+    // TODO: Split messages by PlayerCompletedText and ObjectiveCompletedText where objective messages are for all time records and player for personal records!
+    ObjectiveCompletedText = NSLOCTEXT("Trials", "ObjectiveCompleted", "{Player1Name} completed {Title} in {Time}!");
+    ObjectiveRecordTiedText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} completed {Title} with a tie to {Time}!");
+    ObjectiveRecordFailText = NSLOCTEXT("Trials", "RecordFail", "{Player1Name} failed {Title} by {Time}!");
+    ObjectiveRecordFirstText = NSLOCTEXT("Trials", "RecordFirst", "{Player1Name} completed {Title} in a record of {Time}!");
+    ObjectiveRecordNewText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} completed {Title} with a new time of {Time}!");
 }
 
 FText UTrialsObjectiveCompleteMessage::GetText(int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
 {
+    switch (Switch)
+    {
+    case 0: return ObjectiveCompletedText;
+    case 1: return ObjectiveRecordTiedText;
+    case 2: return ObjectiveRecordFailText;
+    case 3: return ObjectiveRecordFirstText;
+    case 4: return ObjectiveRecordNewText;
+    }
+    return FText::GetEmpty();
+}
+
+void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
+{
     auto* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);
     auto* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
 
-    FFormatNamedArguments Args;
+    float time = Switch == 0 
+        ? ScorerPS->LastScoreObjectiveTimer 
+        : ScoredObjInfo->RecordTime - ScorerPS->LastScoreObjectiveTimer;
+    Args.Add("Player1Name", FText::FromString(bTargetsPlayerState1 ? "You" : ScorerPS->PlayerName));
     Args.Add("Title", ScoredObjInfo->Title);
-    Args.Add("Player1", FText::FromString(ScorerPS->PlayerName));
-
-    FText message;
-
-    if (Switch == 0)
-    {
-        message = ObjectiveCompletedText;
-        Args.Add("Time", ScorerPS->FormatTime(ScorerPS->LastScoreObjectiveTimer));
-    }
-    else if (Switch == 1)
-    {
-        message = NSLOCTEXT("Trials", "RecordFail", "{Player1} failed {Title} by {Time} seconds!");
-        Args.Add("Time", ScorerPS->FormatTime(ScoredObjInfo->RecordTime - ScorerPS->LastScoreObjectiveTimer));
-    }
-
-    return FText::Format(message, Args);
+    Args.Add("Time", ScorerPS->FormatTime(time));
 }
 
 FName UTrialsObjectiveCompleteMessage::GetAnnouncementName_Implementation(int32 Switch, const UObject* OptionalObject, const class APlayerState* RelatedPlayerState_1, const class APlayerState* RelatedPlayerState_2) const
 {
     switch (Switch)
     {
-    case 0: return TEXT("F_Score"); break;
-    case 1: return TEXT("F_Assist"); break;
+    case 0: return TEXT("HatTrick"); break;
+    case 1: return TEXT("Assist"); break;
+    case 2: return TEXT("HatTrick"); break;
+    case 3: return TEXT("HatTrick"); break;
+    case 4: return TEXT("HatTrick"); break;
     }
     return NAME_None;
 }
 
 void UTrialsObjectiveCompleteMessage::PrecacheAnnouncements_Implementation(class UUTAnnouncer* Announcer) const
 {
-    for (int32 i = 0; i < 2; i++)
+    for (int32 i = 0; i < 4; i++)
     {
-        FName SoundName = GetAnnouncementName(i, NULL, NULL, NULL);
-        if (SoundName != NAME_None)
-        {
-            Announcer->PrecacheAnnouncement(SoundName);
-        }
+        Announcer->PrecacheAnnouncement(GetAnnouncementName(i, nullptr, nullptr, nullptr));
     }
 }
 
