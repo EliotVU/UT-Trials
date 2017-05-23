@@ -67,7 +67,7 @@ FVector ATrialsObjective::GetAdjustedScreenPosition(UCanvas* Canvas, const FVect
 
 void ATrialsObjective::PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVector CameraPosition, FVector CameraDir)
 {
-    ATrialsPlayerState* ViewerPS = PC ? Cast<ATrialsPlayerState>(PC->PlayerState) : nullptr;
+    auto* ViewerPS = PC ? Cast<ATrialsPlayerState>(PC->PlayerState) : nullptr;
     auto* UTGS = GetWorld()->GetGameState<ATrialsGameState>();
 
     if (!ViewerPS || !UTGS || !ObjectiveInfo)
@@ -89,45 +89,40 @@ void ATrialsObjective::PostRenderFor(APlayerController* PC, UCanvas* Canvas, FVe
         && ((FVector::DotProduct(CameraDir, (WorldPosition - CameraPosition)) > 0.0f))
         && (UTPC->MyUTHUD == nullptr || !UTPC->MyUTHUD->bShowScores))
     {
-        float TextXL, YL;
-        float Scale = Canvas->ClipX / 1920.f;
-        UFont* SmallFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->SmallFont;
+        bool bDrawEdgeArrow = false; 
 
-        FText ObjectiveTitle = ObjectiveInfo->Title;
-        Canvas->TextSize(SmallFont, ObjectiveTitle.ToString(), TextXL, YL, Scale, Scale);
         FVector ViewDir = UTPC->GetControlRotation().Vector();
         float Dist = (CameraPosition - GetActorLocation()).Size();
-        bool bDrawEdgeArrow = false; 
         FVector ScreenPosition = GetAdjustedScreenPosition(Canvas, WorldPosition, CameraPosition, ViewDir, Dist, 20.f, bDrawEdgeArrow);
-        float XPos = ScreenPosition.X - 0.5f*TextXL;
+
+        float Scale = Canvas->ClipX/1920.f;
+        float TextXL, YL;
+        UFont* TinyFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->TinyFont;
+        Canvas->TextSize(TinyFont, ObjectiveInfo->Title.ToString(), TextXL, YL, Scale, Scale);
+
+        float XPos = ScreenPosition.X - TextXL*0.5f;
         float YPos = ScreenPosition.Y - YL;
         if (XPos < Canvas->ClipX || XPos + TextXL < 0.0f)
         {
-            FFormatNamedArguments Args;
-            Args.Add("Title", ObjectiveTitle);
+            FCanvasTextItem TextItem(FVector2D(XPos, YPos), ObjectiveInfo->Title, TinyFont, FColor::Yellow);
+            TextItem.EnableShadow(FColor::Black);
+            Canvas->DrawItem(TextItem);
 
+            FFormatNamedArguments Args;
             FText NumberText = FText::AsNumber(int32(0.01f*Dist));
             Args.Add("Dist", NumberText);
 
-            float timer = ViewerPS->GetObjectiveTimer();
-            FText TimeText = timer == -1
-                ? FText::FromString(TEXT("InActive"))
-                : ViewerPS->FormatTime(timer);
+            float Timer = ViewerPS->GetObjectiveTimer();
+            FText TimeText = Timer == -1
+                ? ViewerPS->FormatTime(ObjectiveInfo->RecordTime)
+                : ViewerPS->FormatTime(ViewerPS->ObjectiveRecordTime > 0 ? ViewerPS->GetObjectiveRemainingTime() : Timer);
             Args.Add("Time", TimeText);
 
-            FCanvasTextItem TextItem(FVector2D(FMath::TruncToFloat(Canvas->OrgX + XPos), 
-                FMath::TruncToFloat(Canvas->OrgY + YPos - 1.2f*YL)), 
-                ObjectiveTitle, SmallFont, FColor::Green);
-
-            UFont* TinyFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->TinyFont;
-            Canvas->TextSize(TinyFont, TEXT("WWWWWWWW: XX meters, 0:00:00.000 time"), TextXL, YL, Scale, Scale);
-            TextItem.Font = TinyFont;
-
-            FText DistText = FText::Format(NSLOCTEXT("UTRallyPoint", "DistanceText", "{Title}: {Dist} meters, {Time} time"), Args);
-            TextItem.Text = DistText;
-            TextItem.Position.X = ScreenPosition.X - 0.5f*TextXL;
-            TextItem.Position.Y += 0.9f*YL;
-
+            FText DetailsText = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "[{Dist} meters, {Time}]"), Args);
+            Canvas->TextSize(TinyFont, DetailsText.ToString(), TextXL, YL, Scale, Scale);
+            TextItem.Text = DetailsText;
+            TextItem.Position.X = ScreenPosition.X - TextXL*0.5f;
+            TextItem.Position.Y += YL;
             Canvas->DrawItem(TextItem);
         }
     }
