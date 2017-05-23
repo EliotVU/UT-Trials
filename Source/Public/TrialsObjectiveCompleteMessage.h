@@ -2,6 +2,7 @@
 
 #include "UTAnnouncer.h"
 #include "UTLocalMessage.h"
+
 #include "TrialsObjectiveCompleteMessage.generated.h"
 
 UCLASS()

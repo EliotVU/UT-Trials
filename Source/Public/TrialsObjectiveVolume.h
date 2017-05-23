@@ -2,11 +2,9 @@
 
 #include "GameFramework/PhysicsVolume.h"
 #include "TrialsObjectiveInfo.h"
+
 #include "TrialsObjectiveVolume.generated.h"
 
-/**
- * 
- */
 UCLASS(BlueprintType)
 class TRIALS_API ATrialsObjectiveVolume : public APhysicsVolume
 {

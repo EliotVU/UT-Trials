@@ -9,10 +9,12 @@ UCLASS()
 class ATrialsGameState : public AUTGameState
 {
 	GENERATED_UCLASS_BODY()
-    virtual void BeginPlay() override;
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
     UPROPERTY(BlueprintReadOnly, Category = Trials)
     TArray<ATrialsObjectiveInfo*> Objectives;
+
+    virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual bool AllowMinimapFor(AUTPlayerState* PS) override;
 };

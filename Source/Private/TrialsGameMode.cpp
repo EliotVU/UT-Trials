@@ -11,19 +11,24 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
 	GameStateClass = ATrialsGameState::StaticClass();
 	PlayerStateClass = ATrialsPlayerState::StaticClass();
     HUDClass = ATrialsHUD::StaticClass();
+
+    TimeLimit = 0;
+    RespawnWaitTime = 0;
+    bAllowOvertime = false;
+    MapPrefix = TEXT("STR");
+    bTrackKillAssists = false;
 }
 
 bool ATrialsGameMode::AllowSuicideBy(AUTPlayerController* PC)
 {
-    ATrialsPlayerState* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
     return ScorerPS->ActiveObjectiveInfo != nullptr || Super::AllowSuicideBy(PC);
 }
 
 AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
     // TODO: If reached Hub once, give player a spawn with Tag "Hub".
-    // TODO: If player has hub and chosen a objective, spawn player at the objective's set PlayerStart.
-    ATrialsPlayerState* PS = Cast<ATrialsPlayerState>(Player->PlayerState);
+    auto* PS = Cast<ATrialsPlayerState>(Player->PlayerState);
     if (PS->ActiveObjectiveInfo != nullptr)
     {
         return PS->ActiveObjectiveInfo->GetPlayerSpawn(Player);
@@ -39,7 +44,7 @@ void ATrialsGameMode::ScoreTrialObjective(AUTPlayerController* PC, ATrialsObject
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (!ScorerPS->bIsObjectiveTimerActive || ScorerPS->ActiveObjectiveInfo != objInfo) return;
+    if (!ScorerPS->IsObjectiveTimerActive() || ScorerPS->ActiveObjectiveInfo != objInfo) return;
 
     int32 RecordSwitch;
     float Timer = ScorerPS->EndObjectiveTimer();

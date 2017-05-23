@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameFramework/Info.h"
+
 #include "TrialsObjectiveInfo.generated.h"
 
 /**

@@ -77,5 +77,5 @@ bool ATrialsObjectiveInfo::IsActive(AUTPlayerController* PC)
     if (PC == nullptr) return false;
 
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return PS->ActiveObjectiveInfo == this && PS->bIsObjectiveTimerActive;
+    return PS->ActiveObjectiveInfo == this && PS->IsObjectiveTimerActive();
 }

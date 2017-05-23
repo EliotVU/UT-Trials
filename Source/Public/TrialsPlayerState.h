@@ -10,10 +10,6 @@ class ATrialsPlayerState : public AUTPlayerState
 {
 	GENERATED_UCLASS_BODY()
 
-    float ObjectiveStartTime;
-    float ObjectiveEndTime;
-    bool bIsObjectiveTimerActive;
-
 public:
     UPROPERTY(Replicated, BlueprintReadOnly)
     ATrialsObjectiveInfo* ActiveObjectiveInfo;
@@ -41,13 +37,18 @@ public:
         return LastScoreObjectiveTimer;
     }
 
-    float GetObjectiveTimer()
+    float GetObjectiveTimer() const
     {
         if (ActiveObjectiveInfo == nullptr) return -1;
         return RoundTime((bIsObjectiveTimerActive ? GetWorld()->RealTimeSeconds : ObjectiveEndTime) - ObjectiveStartTime);
     }
 
-    float GetObjectiveRemainingTime()
+    bool IsObjectiveTimerActive() const
+    {
+        return bIsObjectiveTimerActive;
+    }
+
+    float GetObjectiveRemainingTime() const
     {
         return bIsObjectiveTimerActive 
             ? (ActiveObjectiveInfo ? ActiveObjectiveInfo->RecordTime : 0.00) - GetObjectiveTimer()
@@ -59,12 +60,12 @@ public:
         ActiveObjectiveInfo = objectiveInfo;
     }
 
-    float RoundTime(float time)
+    float RoundTime(float time) const
     {
         return roundf(time*100.0)/100.0;
     }
 
-    FText FormatTime(float value)
+    FText FormatTime(float value) const
     {
         float seconds = fabs(value);
         int32 minutes = (int32)seconds/60;
@@ -90,7 +91,14 @@ public:
         if (minutes != 0)
             output += minutesString + TEXT("m ");
 
-        output = value < 0 ? TEXT("-") + output + secondsString : output + secondsString;
+        output = value < 0 
+            ? TEXT("-") + output + secondsString 
+            : output + secondsString;
         return FText::FromString(output);
     }
+
+private:
+    float ObjectiveStartTime;
+    float ObjectiveEndTime;
+    bool bIsObjectiveTimerActive;
 };

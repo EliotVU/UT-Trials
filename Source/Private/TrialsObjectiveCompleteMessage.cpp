@@ -1,8 +1,7 @@
 #include "Trials.h"
-#include "TrialsObjectiveCompleteMessage.h"
-
 #include "TrialsPlayerState.h"
 #include "TrialsObjective.h"
+#include "TrialsObjectiveCompleteMessage.h"
 
 UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)

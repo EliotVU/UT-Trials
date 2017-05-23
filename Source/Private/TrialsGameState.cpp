@@ -19,3 +19,8 @@ void ATrialsGameState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & 
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
+
+bool ATrialsGameState::AllowMinimapFor(AUTPlayerState* PS)
+{
+    return true;
+}
