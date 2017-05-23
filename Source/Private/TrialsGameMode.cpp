@@ -1,6 +1,7 @@
 #include "Trials.h"
 #include "TrialsGameMode.h"
 #include "TrialsGameState.h"
+#include "TrialsPlayerController.h"
 #include "TrialsPlayerState.h"
 #include "TrialsHUD.h"
 #include "TrialsObjectiveCompleteMessage.h"
@@ -8,6 +9,7 @@
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+    PlayerControllerClass = ATrialsPlayerController::StaticClass();
 	GameStateClass = ATrialsGameState::StaticClass();
 	PlayerStateClass = ATrialsPlayerState::StaticClass();
     HUDClass = ATrialsHUD::StaticClass();
@@ -21,8 +23,7 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
 
 bool ATrialsGameMode::AllowSuicideBy(AUTPlayerController* PC)
 {
-    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return ScorerPS->ActiveObjectiveInfo != nullptr || Super::AllowSuicideBy(PC);
+    return PC->GetPawn() != nullptr && GetWorld()->TimeSeconds - PC->GetPawn()->CreationTime > 1.25f;
 }
 
 AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
