@@ -35,24 +35,54 @@ void ATrialsGameMode::ScoreTrialObjective(AUTPlayerController* PC, ATrialsObject
 {
     if (PC == nullptr || objInfo == nullptr) return;
 
+    // TODO: Add event here
+
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
-    ATrialsPlayerState* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (!ScorerPS->bIsObjectiveTimerActive || ScorerPS->ActiveObjectiveInfo != objInfo) return;
 
-    int32 msgSwitch;
-    float elapsedTime = ScorerPS->EndObjectiveTimer();
-    // TODO: do record time checks here
-    if (elapsedTime < objInfo->RecordTime)
+    int32 RecordSwitch;
+    float Timer = ScorerPS->EndObjectiveTimer();
+    float RecordTime = objInfo->RecordTime;
+    if (Timer < RecordTime || RecordTime <= 0.00) // New all time
     {
         // New top record!
-        msgSwitch = 0;
+        RecordSwitch = 0;
+        objInfo->RecordTime = Timer;
+        ScorerPS->ObjectiveRecordTime = Timer;
     }
-    else
+    else if (Timer == RecordTime) // Tied with all time
     {
         // tie or slower record...
-        msgSwitch = 1;
+        RecordSwitch = 1;
+    }
+    else // worse, check personal time
+    {
+        RecordTime = ScorerPS->ObjectiveRecordTime;
+        // New or first personal record
+        if (RecordTime <= 0.00)
+        {
+            RecordSwitch = 3;
+            ScorerPS->ObjectiveRecordTime = Timer;
+        }
+        else if (Timer < RecordTime)
+        {
+            RecordSwitch = 4;
+            ScorerPS->ObjectiveRecordTime = Timer;
+        }
+        else if (Timer == RecordTime)
+        {
+            RecordSwitch = 1;
+        }
+        else
+        {
+            RecordSwitch = 2;
+        }
     }
 
-    // ...New time!
-    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), msgSwitch, ScorerPS, nullptr, objInfo);
+
+    // ...New time?!
+    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, objInfo);
+
+    // TODO: Add record event here
 }
