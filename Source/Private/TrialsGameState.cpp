@@ -15,7 +15,7 @@ void ATrialsGameState::BeginPlay()
     }
 }
 
-void ATrialsGameState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
+void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
@@ -23,4 +23,26 @@ void ATrialsGameState::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & 
 bool ATrialsGameState::AllowMinimapFor(AUTPlayerState* PS)
 {
     return true;
+}
+
+// Copy from base, made a little change so that team 255 is not considered as a non-team number. 
+// Easier than hacking in a Default team in a game type where most team features are unnecessary.
+bool ATrialsGameState::OnSameTeam(const AActor* Actor1, const AActor* Actor2)
+{
+    const IUTTeamInterface* TeamInterface1 = Cast<IUTTeamInterface>(Actor1);
+    const IUTTeamInterface* TeamInterface2 = Cast<IUTTeamInterface>(Actor2);
+    if (TeamInterface1 == NULL || TeamInterface2 == NULL)
+    {
+        return false;
+    }
+    else if (TeamInterface1->IsFriendlyToAll() || TeamInterface2->IsFriendlyToAll())
+    {
+        return true;
+    }
+    else
+    {
+        uint8 TeamNum1 = TeamInterface1->GetTeamNum();
+        uint8 TeamNum2 = TeamInterface2->GetTeamNum();
+        return TeamNum1 == TeamNum2;
+    }
 }

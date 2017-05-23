@@ -17,4 +17,5 @@ public:
     virtual void BeginPlay() override;
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual bool AllowMinimapFor(AUTPlayerState* PS) override;
+    virtual bool OnSameTeam(const AActor* Actor1, const AActor* Actor2) override;
 };
