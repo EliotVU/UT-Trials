@@ -27,6 +27,27 @@ void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
     Super::SetPlayerDefaults(PlayerPawn);
 }
 
+void ATrialsGameMode::FinishRestartPlayer(AController* NewPlayer, const FRotator& StartRotation)
+{
+    Super::FinishRestartPlayer(NewPlayer, StartRotation);
+    // We end the objective on spawn over death, so that an objective can still be completed by projectiles during a player's death.
+    auto* PS = Cast<ATrialsPlayerState>(NewPlayer->PlayerState);
+    if (PS && PS->ActiveObjectiveInfo != nullptr)
+    {
+        // TODO: Replicate, not simulated here.
+        PS->EndObjectiveTimer();
+    }
+
+    // EXPLOIT: Cleanup any projectile that was fired before this player's death.
+    for (TActorIterator<AUTProjectile> It(GetWorld()); It; ++It)
+    {
+        if (It->InstigatorController == NewPlayer)
+        {
+            It->Destroy();
+        }
+    }
+}
+
 bool ATrialsGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Momentum, APawn* Injured, AController* InstigatedBy, const FHitResult& HitInfo, AActor* DamageCauser, TSubclassOf<UDamageType> DamageType)
 {
     if (InstigatedBy != nullptr && InstigatedBy != Injured->Controller && UTGameState->OnSameTeam(InstigatedBy, Injured))
@@ -60,7 +81,7 @@ AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, con
     return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
-// Don't drop any items, only discard.
+// EXPLOIT: Don't drop any items, only discard.
 // FIXME: Players can still drop items via feign death and possibly other methods, but there is no option to disable dropping provided by Epic.
 void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
 {

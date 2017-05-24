@@ -12,6 +12,7 @@ class ATrialsGameMode : public AUTGameMode
 
 public:
     virtual void SetPlayerDefaults(APawn* PlayerPawn) override;
+    virtual void FinishRestartPlayer(AController* NewPlayer, const FRotator& StartRotation) override;
     virtual bool ModifyDamage_Implementation(int32& Damage, FVector& Momentum, APawn* Injured, AController* InstigatedBy, const FHitResult& HitInfo, AActor* DamageCauser, TSubclassOf<UDamageType> DamageType) override;
     virtual bool AllowSuicideBy(AUTPlayerController* PC) override;
     virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
