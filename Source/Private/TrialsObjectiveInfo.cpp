@@ -20,6 +20,10 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 void ATrialsObjectiveInfo::BeginPlay()
 {
     RecordTime = DevRecordTime;
+    if (PlayerStart != nullptr)
+    {
+        PlayerStart->bIgnoreInNonTeamGame = true; // Disable default spawning.
+    }
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
