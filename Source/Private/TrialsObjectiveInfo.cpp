@@ -48,11 +48,22 @@ void ATrialsObjectiveInfo::ActivateObjective(AUTPlayerController* PC)
 
 void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 {
+    if (PC == nullptr) return;
+
+    // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
+    auto* CompleterPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (CompleterPS == nullptr || !CompleterPS->IsObjectiveTimerActive() || CompleterPS->ActiveObjectiveInfo != this)
+    {
+        return;
+    }
+
+    float Timer = CompleterPS->EndObjectiveTimer();
+
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)
     {
-        GM->ScoreTrialObjective(PC, this);
-        OnCompleteObjective(PC);
+        OnObjectiveComplete.Broadcast(PC);
+        GM->ScoreTrialObjective(this, Timer, PC);
     }
 }
 

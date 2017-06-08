@@ -30,5 +30,5 @@ public:
     virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
     virtual void DiscardInventory(APawn* Other, AController* Killer) override;
 
-    virtual void ScoreTrialObjective(AUTPlayerController* PC, ATrialsObjectiveInfo* objInfo);
+    virtual void ScoreTrialObjective(ATrialsObjectiveInfo* objInfo, float Timer, AUTPlayerController* PC);
 };

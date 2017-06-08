@@ -110,24 +110,20 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
     }
 }
 
-void ATrialsGameMode::ScoreTrialObjective(AUTPlayerController* PC, ATrialsObjectiveInfo* objInfo)
+void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer, AUTPlayerController* PC)
 {
-    if (PC == nullptr || objInfo == nullptr) return;
+    check(Obj);
+    check(PC);
 
-    // TODO: Add event here
-
-    // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (!ScorerPS->IsObjectiveTimerActive() || ScorerPS->ActiveObjectiveInfo != objInfo) return;
 
     int32 RecordSwitch;
-    float Timer = ScorerPS->EndObjectiveTimer();
-    float RecordTime = objInfo->RecordTime;
+    float RecordTime = Obj->RecordTime;
     if (Timer < RecordTime || RecordTime <= 0.00) // New all time
     {
         // New top record!
         RecordSwitch = 0;
-        objInfo->RecordTime = Timer;
+        Obj->RecordTime = Timer;
         ScorerPS->ObjectiveRecordTime = Timer;
     }
     else if (Timer == RecordTime) // Tied with all time
@@ -161,7 +157,7 @@ void ATrialsGameMode::ScoreTrialObjective(AUTPlayerController* PC, ATrialsObject
 
 
     // ...New time?!
-    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, objInfo);
+    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, Obj);
 
     // TODO: Add record event here
 }

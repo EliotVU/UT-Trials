@@ -4,6 +4,8 @@
 
 #include "TrialsObjectiveInfo.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerController*, PC);
+
 /**
  * Defines an objective in your Trials map. 
  * Use ActivateObjective() to activate this objective for a player, use CompleteObjective() to score, and DisableObjective() to de-activate the objective.
@@ -61,7 +63,7 @@ public:
     virtual void DisableObjective(AUTPlayerController* PC, bool bDeActivate = false);
 
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
-    UFUNCTION(BlueprintImplementableEvent, Category = Objective)
-    void OnCompleteObjective(AUTPlayerController* PC);
+    UPROPERTY(BlueprintAssignable, Category = Objective)
+    FObjectiveComplete OnObjectiveComplete;
 };
 
