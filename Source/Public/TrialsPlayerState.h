@@ -21,33 +21,20 @@ public:
     UPROPERTY(Replicated)
     float ObjectiveRecordTime;
 
-    void StartObjectiveTimer()
-    {
-        bIsObjectiveTimerActive = true;
-        ObjectiveEndTime = 0.00;
-        ObjectiveStartTime = GetWorld()->RealTimeSeconds;
-    }
-
-    float EndObjectiveTimer()
-    {
-        ObjectiveEndTime = GetWorld()->RealTimeSeconds;
-        LastScoreObjectiveTimer = GetObjectiveTimer();
-        NetUpdateTime = GetWorld()->TimeSeconds - 1;
-        bIsObjectiveTimerActive = false;
-        return LastScoreObjectiveTimer;
-    }
-
+    UFUNCTION(BlueprintCallable, Category = Objective)
     float GetObjectiveTimer() const
     {
         if (ActiveObjectiveInfo == nullptr) return -1;
         return RoundTime((bIsObjectiveTimerActive ? GetWorld()->RealTimeSeconds : ObjectiveEndTime) - ObjectiveStartTime);
     }
 
+    UFUNCTION(BlueprintCallable, Category = Objective)
     bool IsObjectiveTimerActive() const
     {
         return bIsObjectiveTimerActive;
     }
 
+    UFUNCTION(BlueprintCallable, Category = Objective)
     float GetObjectiveRemainingTime() const
     {
         return bIsObjectiveTimerActive 
@@ -55,9 +42,34 @@ public:
             : ObjectiveRecordTime;
     }
 
+    void StartObjectiveTimer()
+    {
+        bIsObjectiveTimerActive = true;
+        ObjectiveEndTime = 0.00;
+        ObjectiveStartTime = GetWorld()->RealTimeSeconds;
+        ForceNetUpdate();
+    }
+
+    float EndObjectiveTimer()
+    {
+        if (!bIsObjectiveTimerActive) 
+            return LastScoreObjectiveTimer;
+
+        ObjectiveEndTime = GetWorld()->RealTimeSeconds;
+        LastScoreObjectiveTimer = GetObjectiveTimer();
+        bIsObjectiveTimerActive = false;
+        ForceNetUpdate();
+        return LastScoreObjectiveTimer;
+    }
+
     void SetObjective(ATrialsObjectiveInfo* objectiveInfo)
     {
+        if (objectiveInfo == ActiveObjectiveInfo)
+        {
+            return;
+        }
         ActiveObjectiveInfo = objectiveInfo;
+        ForceNetUpdate();
     }
 
     float RoundTime(float time) const
@@ -65,6 +77,7 @@ public:
         return roundf(time*100.0)/100.0;
     }
 
+    UFUNCTION(BlueprintCallable, Category = HUD)
     FText FormatTime(float value) const
     {
         float seconds = fabs(value);
