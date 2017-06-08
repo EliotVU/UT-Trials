@@ -15,8 +15,11 @@ namespace UnrealBuildTool.Rules
                     "UnrealTournament",
 					"InputCore",
 					"SlateCore",
-				}
-				);
+                    "Http",
+                    "Json",
+                    "JsonUtilities"
+                }
+			);
 		}
 	}
 }

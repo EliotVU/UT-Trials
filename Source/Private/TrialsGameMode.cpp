@@ -5,6 +5,7 @@
 #include "TrialsPlayerState.h"
 #include "TrialsHUD.h"
 #include "TrialsObjectiveCompleteMessage.h"
+#include "TrialsAPI.h"
 
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -19,6 +20,23 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     bAllowOvertime = false;
     MapPrefix = TEXT("STR");
     bTrackKillAssists = false;
+}
+
+void ATrialsGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // Authenticate this server.
+    RecordsAPI = Cast<ATrialsAPI>(GetWorld()->SpawnActor(ATrialsAPI::StaticClass()));
+    RecordsAPI->Authenticate(RecordsBaseURL, RecordsAPIToken, [this]() {
+        UE_LOG(UT, Log, TEXT("Records API is Ready!"));
+
+        FString MapName = GetWorld()->GetMapName();
+        RecordsAPI->GetMap(MapName, [this](FMapInfo& MapInfo) {
+            CurrentMapInfo = &MapInfo;
+            UE_LOG(UT, Log, TEXT("Map data ready! %s"), *MapInfo.Name);
+        });
+    });
 }
 
 void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
