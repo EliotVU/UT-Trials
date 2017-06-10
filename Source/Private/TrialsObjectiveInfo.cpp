@@ -10,11 +10,6 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
     SetReplicates(true);
     bAlwaysRelevant = true;
     NetPriority = 1.0;
-
-    // N/A
-    DevRecordTime = -1;
-    RecordTime = -1;
-    AvgRecordTime = -1;
 }
 
 void ATrialsObjectiveInfo::BeginPlay()
@@ -58,6 +53,7 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     }
 
     float Timer = CompleterPS->EndObjectiveTimer();
+    CompleterPS->LastScoreObjectiveTimer = Timer;
 
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)

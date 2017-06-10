@@ -21,10 +21,19 @@ public:
     UPROPERTY(Replicated)
     float ObjectiveRecordTime;
 
+    virtual void Tick(float DeltaTime) override
+    {
+        Super::Tick(DeltaTime);
+
+        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("TIMER %f"), GetObjectiveTimer()));
+        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("REM %f"), GetObjectiveRemainingTime()));
+        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Rec %f"), GetRacingRecordTime()));
+    }
+
     UFUNCTION(BlueprintCallable, Category = Objective)
     float GetObjectiveTimer() const
     {
-        if (ActiveObjectiveInfo == nullptr) return -1;
+        if (ActiveObjectiveInfo == nullptr) return 0.0;
         return RoundTime((bIsObjectiveTimerActive ? GetWorld()->RealTimeSeconds : ObjectiveEndTime) - ObjectiveStartTime);
     }
 
@@ -37,9 +46,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = Objective)
     float GetObjectiveRemainingTime() const
     {
-        return bIsObjectiveTimerActive 
-            ? (ActiveObjectiveInfo ? ActiveObjectiveInfo->RecordTime : 0.00) - GetObjectiveTimer()
-            : ObjectiveRecordTime;
+        float Time = GetRacingRecordTime();
+        return Time > 0.0 
+            ? Time - GetObjectiveTimer() 
+            : GetObjectiveTimer();
+    }
+
+    // Always race our own record time when possible.
+    float GetRacingRecordTime() const
+    {
+        return ObjectiveRecordTime > 0.0
+            ? ObjectiveRecordTime 
+            : (ActiveObjectiveInfo != nullptr
+                ? ActiveObjectiveInfo->RecordTime 
+                : 0.0);
     }
 
     void StartObjectiveTimer()
@@ -56,25 +76,26 @@ public:
             return LastScoreObjectiveTimer;
 
         ObjectiveEndTime = GetWorld()->RealTimeSeconds;
-        LastScoreObjectiveTimer = GetObjectiveTimer();
         bIsObjectiveTimerActive = false;
         ForceNetUpdate();
-        return LastScoreObjectiveTimer;
+        return RoundTime(ObjectiveEndTime - ObjectiveStartTime);
     }
 
-    void SetObjective(ATrialsObjectiveInfo* objectiveInfo)
+    void SetObjective(ATrialsObjectiveInfo* Obj)
     {
-        if (objectiveInfo == ActiveObjectiveInfo)
+        if (Obj == ActiveObjectiveInfo)
         {
             return;
         }
-        ActiveObjectiveInfo = objectiveInfo;
+        ObjectiveRecordTime = 0.0;
+        LastScoreObjectiveTimer = 0.0;
+        ActiveObjectiveInfo = Obj;
         ForceNetUpdate();
     }
 
-    float RoundTime(float time) const
+    float RoundTime(float Seconds) const
     {
-        return roundf(time*100.0)/100.0;
+        return roundf(Seconds*100.0)/100.0;
     }
 
     UFUNCTION(BlueprintCallable, Category = HUD)
@@ -108,6 +129,14 @@ public:
             ? TEXT("-") + output + secondsString 
             : output + secondsString;
         return FText::FromString(output);
+    }
+
+    UFUNCTION(BlueprintCallable, Category = HUD)
+    FLinearColor GetTimerColor(float Timer) const
+    {
+        float Fade = FMath::Fmod(fabs(Timer), 1.0);
+        FLinearColor TimerColor = FLinearColor::LerpUsingHSV(Timer > 0.0 ? FLinearColor::Green : FLinearColor::Red, FLinearColor::White, 1.0 - Fade);
+        return TimerColor;
     }
 
 private:

@@ -119,7 +119,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer
 
     int32 RecordSwitch;
     float RecordTime = Obj->RecordTime;
-    if (Timer < RecordTime || RecordTime <= 0.00) // New all time
+    if (Timer < RecordTime || RecordTime == 0.00) // New all time
     {
         // New top record!
         RecordSwitch = 0;
@@ -135,7 +135,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer
     {
         RecordTime = ScorerPS->ObjectiveRecordTime;
         // New or first personal record
-        if (RecordTime <= 0.00)
+        if (RecordTime == 0.00)
         {
             RecordSwitch = 3;
             ScorerPS->ObjectiveRecordTime = Timer;
