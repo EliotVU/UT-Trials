@@ -17,11 +17,17 @@ UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FOb
     bIsStatusAnnouncement = false;
 
     // TODO: Split messages by PlayerCompletedText and ObjectiveCompletedText where objective messages are for all time records and player for personal records!
-    ObjectiveCompletedText = NSLOCTEXT("Trials", "ObjectiveCompleted", "{Player1Name} completed {Title} in {Time}!");
-    ObjectiveRecordTiedText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} completed {Title} with a tie to {Time}!");
+    ObjectiveCompletedText = NSLOCTEXT("Trials", "RecordSet", "{Player1Name} completed {Title} in {Time}!");
+    ObjectiveRecordTiedText = NSLOCTEXT("Trials", "RecordTied", "{Player1Name} completed {Title} with a tie to {Time}!");
     ObjectiveRecordFailText = NSLOCTEXT("Trials", "RecordFail", "{Player1Name} failed {Title} by {Time}!");
     ObjectiveRecordFirstText = NSLOCTEXT("Trials", "RecordFirst", "{Player1Name} completed {Title} in a record of {Time}!");
     ObjectiveRecordNewText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} completed {Title} with a new time of {Time}!");
+
+    static ConstructorHelpers::FObjectFinder<USoundBase> RecordSetSoundFinder(TEXT("SoundCue'/Trials/RecordSet.RecordSet'"));
+    RecordSetSound = RecordSetSoundFinder.Object;
+
+    static ConstructorHelpers::FObjectFinder<USoundBase> RecordFailedSoundFinder(TEXT("SoundCue'/Trials/RecordFailed.RecordFailed'"));
+    RecordFailedSound = RecordFailedSoundFinder.Object;
 }
 
 FText UTrialsObjectiveCompleteMessage::GetText(int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
@@ -42,12 +48,43 @@ void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32
     auto* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);
     auto* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
 
-    float time = Switch == 0 
-        ? ScorerPS->LastScoreObjectiveTimer 
-        : ScoredObjInfo->RecordTime - ScorerPS->LastScoreObjectiveTimer;
+    float Time = ScorerPS->LastScoreObjectiveTimer;
+    switch (Switch)
+    {
+        // Relative to obj's best time.
+    case 2:
+        Time = ScoredObjInfo->RecordTime - Time;
+        break;
+    }
+    
     Args.Add("Player1Name", FText::FromString(bTargetsPlayerState1 ? "You" : ScorerPS->PlayerName));
     Args.Add("Title", ScoredObjInfo->Title);
-    Args.Add("Time", ScorerPS->FormatTime(time));
+    Args.Add("Time", ScorerPS->FormatTime(Time));
+}
+
+void UTrialsObjectiveCompleteMessage::ClientReceive(const FClientReceiveData& ClientData) const
+{
+    Super::ClientReceive(ClientData);
+
+    USoundBase* AnnouncementSound = RecordSetSound;
+    switch (ClientData.MessageIndex)
+    {
+    case 1: case 2:
+        AnnouncementSound = RecordFailedSound;
+        break;
+    }
+
+    if (AnnouncementSound == nullptr)
+    {
+        return;
+    }
+
+    auto* PC = Cast<AUTPlayerController>(ClientData.LocalPC);
+    if (PC == nullptr)
+    {
+        return;
+    }
+    PC->UTClientPlaySound(AnnouncementSound);
 }
 
 FName UTrialsObjectiveCompleteMessage::GetAnnouncementName_Implementation(int32 Switch, const UObject* OptionalObject, const class APlayerState* RelatedPlayerState_1, const class APlayerState* RelatedPlayerState_2) const
@@ -55,10 +92,6 @@ FName UTrialsObjectiveCompleteMessage::GetAnnouncementName_Implementation(int32 
     switch (Switch)
     {
     case 0: return TEXT("HatTrick"); break;
-    case 1: return TEXT("Assist"); break;
-    case 2: return TEXT("HatTrick"); break;
-    case 3: return TEXT("HatTrick"); break;
-    case 4: return TEXT("HatTrick"); break;
     }
     return NAME_None;
 }
@@ -78,5 +111,6 @@ float UTrialsObjectiveCompleteMessage::GetAnnouncementPriority(const FAnnounceme
 
 bool UTrialsObjectiveCompleteMessage::ShouldPlayAnnouncement(const FClientReceiveData& ClientData) const
 {
-    return true;
+    // TODO: Add anouncement after record sound cues.
+    return false;
 }
