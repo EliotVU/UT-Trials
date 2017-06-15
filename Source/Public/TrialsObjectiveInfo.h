@@ -18,6 +18,9 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 	GENERATED_UCLASS_BODY()
 
 public:
+    // Cached remote data.
+    FObjInfo ObjInfo;
+
     /* A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 
      */
@@ -40,6 +43,10 @@ public:
     float DevRecordTime;
 
     virtual void BeginPlay() override;
+
+    void InitData(FString MapId);
+    void ScoreRecord(float Record, AUTPlayerController* PC);
+
     virtual AUTPlayerStart* GetPlayerSpawn(AController* Player);
 
     /* True if the objective has been activated, regardless of the timer's state. */
@@ -65,5 +72,8 @@ public:
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
     UPROPERTY(BlueprintAssignable, Category = Objective)
     FObjectiveComplete OnObjectiveComplete;
+
+private:
+    ATrialsAPI* GetAPI() const;
 };
 

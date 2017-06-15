@@ -22,21 +22,54 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     bTrackKillAssists = false;
 }
 
-void ATrialsGameMode::BeginPlay()
+void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
-    Super::BeginPlay();
+    Super::InitGame(MapName, Options, ErrorMessage);
 
     // Authenticate this server.
     RecordsAPI = Cast<ATrialsAPI>(GetWorld()->SpawnActor(ATrialsAPI::StaticClass()));
-    RecordsAPI->Authenticate(RecordsBaseURL, RecordsAPIToken, [this]() {
+    RecordsAPI->Authenticate(RecordsBaseURL, RecordsAPIToken, ServerNameOverride, [this, MapName]() {
         UE_LOG(UT, Log, TEXT("Records API is Ready!"));
-
-        FString MapName = GetWorld()->GetMapName();
+        
         RecordsAPI->GetMap(MapName, [this](FMapInfo& MapInfo) {
-            CurrentMapInfo = &MapInfo;
-            UE_LOG(UT, Log, TEXT("Map data ready! %s"), *MapInfo.Name);
+            CurrentMapInfo = MapInfo;
+            APIReady();
         });
     });
+}
+
+void ATrialsGameMode::APIReady()
+{
+    bAPIAuthenticated = true;
+
+    for (TActorIterator<ATrialsObjectiveInfo> It(GetWorld()); It; ++It)
+    {
+        It->InitData(CurrentMapInfo.Name);
+    }
+
+}
+
+void ATrialsGameMode::BeginPlay()
+{
+    Super::BeginPlay();
+}
+
+void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
+{
+    Super::PostLogin(NewPlayer);
+
+    auto* PS = Cast<ATrialsPlayerState>(NewPlayer->PlayerState);
+    if (PS != nullptr)
+    {
+        FLoginInfo LoginInfo;
+        LoginInfo.ProfileId = PS->UniqueId->ToString();
+        LoginInfo.Name = PS->PlayerName;
+
+        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [this, PS](const FAPIResult& Data) {
+            ATrialsAPI::FromJSON(Data, &PS->PlayerInfo);
+            UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *PS->PlayerInfo.Name, *PS->PlayerInfo.CountryCode);
+        });
+    }
 }
 
 void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
@@ -123,8 +156,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer
     {
         // New top record!
         RecordSwitch = 0;
-        Obj->RecordTime = Timer;
-        ScorerPS->ObjectiveRecordTime = Timer;
+        Obj->ScoreRecord(Timer, PC);
     }
     else if (Timer == RecordTime) // Tied with all time
     {
@@ -138,12 +170,12 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer
         if (RecordTime == 0.00)
         {
             RecordSwitch = 3;
-            ScorerPS->ObjectiveRecordTime = Timer;
+            Obj->ScoreRecord(Timer, PC);
         }
         else if (Timer < RecordTime)
         {
             RecordSwitch = 4;
-            ScorerPS->ObjectiveRecordTime = Timer;
+            Obj->ScoreRecord(Timer, PC);
         }
         else if (Timer == RecordTime)
         {

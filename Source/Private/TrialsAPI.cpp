@@ -19,6 +19,9 @@ void ATrialsAPI::Tick(float DeltaTime)
 // API based on UTMcpUtils.h
 TSharedRef<IHttpRequest> ATrialsAPI::CreateRequest(const FString& Verb, const FString& Path) const
 {
+    // Ensure we have passed authentication.
+    check(!BaseURL.IsEmpty());
+
     TSharedRef<IHttpRequest> HttpRequest = FHttpModule::Get().CreateRequest();
     HttpRequest->SetURL(BaseURL + Path);
     HttpRequest->SetVerb(Verb);
@@ -42,63 +45,94 @@ void ATrialsAPI::SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunct
 
 void ATrialsAPI::OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool (const FHttpResponsePtr& HttpResponse)> OnComplete)
 {
-    UE_LOG(UT, Log, TEXT("Received response from request %s with %s"), *HttpRequest->GetURL(), *HttpResponse->GetContentAsString());
     if (HttpResponse.IsValid() && bSucceeded)
     {
+        UE_LOG(UT, Log, TEXT("Received response from request %s with %s"), *HttpRequest->GetURL(), *HttpResponse->GetContentAsString());
         if (OnComplete(HttpResponse))
         {
+        }
+        else
+        {
+            UE_LOG(UT, Error, TEXT("Request response, denied!."));
         }
     }
     else
     {
+        UE_LOG(UT, Warning, TEXT("Request failed. No response from %s"), *HttpRequest->GetURL());
         OnComplete(FHttpResponsePtr());
     }
 }
 
-void ATrialsAPI::Authenticate(const FString& APIBaseURL, const FString& APIToken, const FAuthenticate& OnResponse)
+TSharedRef<IHttpRequest> ATrialsAPI::Fetch(const FString Path, const FAPIOnResult& OnSuccess, const FAPIOnError& OnError)
+{
+    auto HttpRequest = CreateRequest(TEXT("GET"), Path);
+    SendRequest(HttpRequest, [this, Path, OnSuccess, OnError](const FHttpResponsePtr& HttpResponse) -> bool {
+        if (!HttpResponse.IsValid())
+        {
+            OnError(TEXT("No response! Invalid."));
+            return false;
+        }
+
+        TSharedPtr<FJsonObject> JsonObject;
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(HttpResponse->GetContentAsString());
+        if (!FJsonSerializer::Deserialize(Reader, JsonObject))
+        {
+            OnError(TEXT("Couldn't deserialize response from ") + Path);
+            return false;
+        }
+
+        OnSuccess(JsonObject);
+        return true;
+    });
+    return HttpRequest;
+}
+
+TSharedRef<IHttpRequest> ATrialsAPI::Post(const FString Path, const FString Content, const FAPIOnResult& OnSuccess, const FAPIOnError& OnError)
+{
+    auto HttpRequest = CreateRequest(TEXT("POST"), Path);
+    HttpRequest->SetContentAsString(Content);
+    UE_LOG(UT, Log, TEXT("Content: %s"), *Content);
+    SendRequest(HttpRequest, [this, OnSuccess, OnError](const FHttpResponsePtr& HttpResponse) -> bool {
+        if (!HttpResponse.IsValid())
+        {
+            OnError(TEXT("No response! Invalid."));
+            return false;
+        }
+
+        TSharedPtr<FJsonObject> JsonObject;
+        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(HttpResponse->GetContentAsString());
+        if (!FJsonSerializer::Deserialize(Reader, JsonObject))
+        {
+            OnError(TEXT("Couldn't deserialize response!"));
+            return false;
+        }
+
+        OnSuccess(JsonObject);
+        return true;
+    });
+    return HttpRequest;
+}
+
+void ATrialsAPI::Authenticate(const FString& APIBaseURL, const FString& APIToken, const FString& ClientName, const FAuthenticate& OnResponse)
 {
     UE_LOG(UT, Log, TEXT("Making an authentication request URL: %s token: %s"), *APIBaseURL, *APIToken);
 
     BaseURL = APIBaseURL;
-
-    auto HttpRequest = CreateRequest(TEXT("GET"), "api/authenticate?token=" + FGenericPlatformHttp::UrlEncode(APIToken));
-    SendRequest(HttpRequest, [this, OnResponse](const FHttpResponsePtr& HttpResponse) -> bool {
-        TSharedPtr<FJsonObject> JsonObject;
-        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(HttpResponse->GetContentAsString());
-        if (!FJsonSerializer::Deserialize(Reader, JsonObject))
-        {
-            // ... can't authenticate!
-            RequestError(TEXT("Can't authenticate!"));
-            return false;
+    Fetch(TEXT("api/authenticate?token=") 
+        + FGenericPlatformHttp::UrlEncode(APIToken) 
+        + TEXT("&name=") + FGenericPlatformHttp::UrlEncode(ClientName),
+        [this, OnResponse](const FAPIResult& Data) {
+            AuthToken = Data->GetStringField("token");
+            OnResponse();
         }
-
-        AuthToken = JsonObject->GetStringField("token");
-        OnResponse();
-        return true;
-    });
+    );
 }
 
 void ATrialsAPI::GetMap(const FString MapName, const FGetMap& OnResponse)
 {
-    auto HttpRequest = CreateRequest(TEXT("GET"), "api/maps/" + FGenericPlatformHttp::UrlEncode(MapName) + "?create=1");
-    SendRequest(HttpRequest, [this, OnResponse](const FHttpResponsePtr& HttpResponse) -> bool {
+    Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("?create=1"), [this, OnResponse](const FAPIResult& Data) {
         FMapInfo MapInfo;
-
-        TSharedPtr<FJsonObject> JsonObject;
-        TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(HttpResponse->GetContentAsString());
-        if (!FJsonSerializer::Deserialize(Reader, JsonObject))
-        {
-            RequestError(TEXT("Received an invalid response!"));
-            return false;
-        }
-
-        FJsonObjectConverter::JsonObjectToUStruct(JsonObject.ToSharedRef(), &MapInfo, 0, 0);
+        FromJSON(Data, &MapInfo);
         OnResponse(MapInfo);
-        return true;
     });
 }
-
-void ATrialsAPI::RequestError(FString Error)
-{
-}
-

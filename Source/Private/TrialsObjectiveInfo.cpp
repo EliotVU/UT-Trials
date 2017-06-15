@@ -3,6 +3,7 @@
 #include "TrialsObjectiveSetMessage.h"
 #include "TrialsPlayerState.h"
 #include "TrialsGameMode.h"
+#include "TrialsAPI.h"
 
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -14,11 +15,68 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 
 void ATrialsObjectiveInfo::BeginPlay()
 {
+    if (GetWorld()->GetAuthGameMode<ATrialsGameMode>() == nullptr)
+    {
+        Destroy();
+        return;
+    }
+
     RecordTime = DevRecordTime;
     if (PlayerStart != nullptr)
     {
         PlayerStart->bIgnoreInNonTeamGame = true; // Disable default spawning.
     }
+}
+
+ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
+{
+    return GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
+}
+
+void ATrialsObjectiveInfo::InitData(FString MapName)
+{
+    auto ObjName = GetActorLabel();
+    auto ObjTitle = Title;
+
+    auto* API = GetAPI();
+    API->Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("/") + FGenericPlatformHttp::UrlEncode(ObjName) + TEXT("?create=1"), 
+        [this](const FAPIResult& Data) {
+            ATrialsAPI::FromJSON(Data, &ObjInfo);
+
+            if (ObjInfo.Records.Num() == 0) {
+
+            }
+
+            // Acquire last cached record time.
+            RecordTime = ATrialsPlayerState::RoundTime(ObjInfo.RecordTime > 0.f ? ObjInfo.RecordTime : DevRecordTime);
+        });
+}
+
+void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
+{
+    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (Record < RecordTime)
+    {
+        RecordTime = Record;
+    }
+
+    ScorerPS->ObjectiveRecordTime = Record;
+
+    auto ObjId = ObjInfo._id;
+    check(!ObjId.IsEmpty())
+
+    FRecordInfo RecInfo;
+    RecInfo.Value = Record;
+    RecInfo.PlayerId = ScorerPS->PlayerInfo._id;
+    check(!RecInfo.PlayerId.IsEmpty())
+
+    auto* API = GetAPI();
+    API->Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), 
+        ATrialsAPI::ToJSON(RecInfo),
+        [this](const FAPIResult& Data) {
+            FRecordInfo RecInfo;
+            ATrialsAPI::FromJSON(Data, &RecInfo);
+        });
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)

@@ -2,6 +2,7 @@
 
 #include "TrialsGameMode.h"
 #include "TrialsObjectiveInfo.h"
+#include "TrialsAPI.h"
 
 #include "TrialsPlayerState.generated.h"
 
@@ -11,6 +12,9 @@ class ATrialsPlayerState : public AUTPlayerState
 	GENERATED_UCLASS_BODY()
 
 public:
+    FPlayerInfo PlayerInfo;
+    FRecordInfo ObjRecordInfo;
+
     UPROPERTY(Replicated, BlueprintReadOnly)
     ATrialsObjectiveInfo* ActiveObjectiveInfo;
 
@@ -90,16 +94,36 @@ public:
         ObjectiveRecordTime = 0.0;
         LastScoreObjectiveTimer = 0.0;
         ActiveObjectiveInfo = Obj;
-        ForceNetUpdate();
+
+        if (ActiveObjectiveInfo != nullptr)
+        {
+            // Note: assumes that the activated objective has fetched its info!
+            auto _ObjId = ActiveObjectiveInfo->ObjInfo._id;
+            auto _PlayerId = PlayerInfo._id;
+
+            auto* API = GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
+            API->Fetch(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(_ObjId) + TEXT("/") + FGenericPlatformHttp::UrlEncode(_PlayerId),
+                [this, Obj](const FAPIResult& Data) {
+                    // Player may have switched active objective during this request.
+                    if (ActiveObjectiveInfo != Obj)
+                    {
+                        return;
+                    }
+                    ATrialsAPI::FromJSON(Data, &ObjRecordInfo);
+                    ObjectiveRecordTime = RoundTime(ObjRecordInfo.Value);
+                    ForceNetUpdate();
+                }
+            );
+        }
     }
 
-    float RoundTime(float Seconds) const
+    static float RoundTime(const float Seconds)
     {
         return roundf(Seconds*100.0)/100.0;
     }
 
     UFUNCTION(BlueprintCallable, Category = HUD)
-    FText FormatTime(float value) const
+    static FText FormatTime(const float value)
     {
         float seconds = fabs(value);
         int32 minutes = (int32)seconds/60;
@@ -132,7 +156,7 @@ public:
     }
 
     UFUNCTION(BlueprintCallable, Category = HUD)
-    FLinearColor GetTimerColor(float Timer) const
+    static FLinearColor GetTimerColor(const float Timer)
     {
         float Fade = FMath::Fmod(fabs(Timer), 1.0);
         FLinearColor TimerColor = FLinearColor::LerpUsingHSV(Timer > 0.0 ? FLinearColor::Green : FLinearColor::Red, FLinearColor::White, 1.0 - Fade);
