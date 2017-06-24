@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameFramework/Info.h"
+#include "TrialsAPI.h"
 
 #include "TrialsObjectiveInfo.generated.h"
 
@@ -51,23 +52,23 @@ public:
 
     /* True if the objective has been activated, regardless of the timer's state. */
     UFUNCTION(BlueprintCallable, Category = Objective)
-    virtual bool IsEnabled(AUTPlayerController* PC);
+    virtual bool IsEnabled(APlayerController* PC);
 
     /* True if player has activated this objective and if the Timer is running. */
     UFUNCTION(BlueprintCallable, Category = Objective)
-    virtual bool IsActive(AUTPlayerController* PC);
+    virtual bool IsActive(APlayerController* PC);
 
     /* Activates(if disabled) and starts a timer for player. When active, GetPlayerSpawn() will be used to spawn the player. */
-    UFUNCTION(BlueprintCallable, Category = Objective)
-    virtual void ActivateObjective(AUTPlayerController* PC);
+    UFUNCTION(BlueprintCallable, Category = Objective, BlueprintAuthorityOnly)
+    virtual void ActivateObjective(APlayerController* PC);
 
     /* Completes the objective for player. When called, OnCompleteObjective will be emitted. */
-    UFUNCTION(BlueprintCallable, Category = Objective)
+    UFUNCTION(BlueprintCallable, Category = Objective, BlueprintAuthorityOnly)
     virtual void CompleteObjective(AUTPlayerController* PC);
 
     /* Disables and stops the timer for player. */
-    UFUNCTION(BlueprintCallable, Category = Objective)
-    virtual void DisableObjective(AUTPlayerController* PC, bool bDeActivate = false);
+    UFUNCTION(BlueprintCallable, Category = Objective, BlueprintAuthorityOnly)
+    virtual void DisableObjective(APlayerController* PC, bool bDeActivate = false);
 
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
     UPROPERTY(BlueprintAssignable, Category = Objective)

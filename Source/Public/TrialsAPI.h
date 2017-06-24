@@ -6,6 +6,47 @@
 #include "TrialsAPI.generated.h"
 
 USTRUCT()
+struct FClientInfo
+{
+    GENERATED_USTRUCT_BODY()
+
+public:
+    UPROPERTY()
+    FString _id;
+
+    UPROPERTY()
+    FString Name;
+
+    FClientInfo() {}
+};
+
+USTRUCT()
+struct FLoginInfo
+{
+    GENERATED_USTRUCT_BODY()
+
+public:
+    UPROPERTY()
+    FString ProfileId;
+
+    UPROPERTY()
+    FString Name;
+};
+
+USTRUCT()
+struct FPlayerInfo : public FLoginInfo
+{
+    GENERATED_USTRUCT_BODY()
+
+public:
+    UPROPERTY()
+    FString _id;
+
+    UPROPERTY()
+    FString CountryCode;
+};
+
+USTRUCT()
 struct FObjectiveInfo
 {
     GENERATED_USTRUCT_BODY()
@@ -36,7 +77,7 @@ public:
     FString Name;
 
     UPROPERTY()
-    TArray<FString> Objs; // Ids
+    TArray<FObjectiveInfo> Objs; // id and name only
 
     UPROPERTY()
     bool IsRanked;
@@ -59,11 +100,20 @@ public:
     UPROPERTY()
     uint32 Flags;
 
+    // id and name only
     UPROPERTY()
-    FString PlayerId;
+    FPlayerInfo Player;
 
+    // id and name only
     UPROPERTY()
-    FString ClientId;
+    FClientInfo Client;
+
+    FRecordInfo() {}
+    FRecordInfo(float Value, FString PlayerId) 
+    {
+        this->Value = Value;
+        this->Player._id = PlayerId;
+    }
 };
 
 USTRUCT()
@@ -88,32 +138,6 @@ public:
     TArray<FRecordInfo> Records;
 
     FObjInfo() : RecordTime(0.f) {}
-};
-
-USTRUCT()
-struct FLoginInfo
-{
-    GENERATED_USTRUCT_BODY()
-
-public:
-    UPROPERTY()
-    FString ProfileId;
-
-    UPROPERTY()
-    FString Name;
-};
-
-USTRUCT()
-struct FPlayerInfo : public FLoginInfo
-{
-    GENERATED_USTRUCT_BODY()
-
-public:
-    UPROPERTY()
-    FString _id;
-
-    UPROPERTY()
-    FString CountryCode;
 };
 
 typedef TSharedPtr<FJsonObject>& FAPIResult;
@@ -141,6 +165,18 @@ public:
 
     typedef TFunction<void(FMapInfo& MapInfo)> FGetMap;
     void GetMap(const FString MapName, const FGetMap& OnResponse);
+
+    void SubmitRecord(const float Value, const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
+    {
+        FRecordInfo RecInfo(Value, PlayerId);
+        Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), [OnSuccess](const FAPIResult Result) {
+            FRecordInfo RecInfo;
+            ATrialsAPI::FromJSON(Result, &RecInfo);
+
+            if (OnSuccess)
+                OnSuccess(RecInfo);
+        });
+    }
 
     TSharedRef<IHttpRequest> Fetch(
         const FString Path, 

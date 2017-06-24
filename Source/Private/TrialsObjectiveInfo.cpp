@@ -15,7 +15,7 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 
 void ATrialsObjectiveInfo::BeginPlay()
 {
-    if (GetWorld()->GetAuthGameMode<ATrialsGameMode>() == nullptr)
+    if (!GetWorld()->IsNetMode(ENetMode::NM_Client) && GetWorld()->GetAuthGameMode<ATrialsGameMode>() == nullptr)
     {
         Destroy();
         return;
@@ -35,6 +35,7 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
 
 void ATrialsObjectiveInfo::InitData(FString MapName)
 {
+    // FIXME: Only available in development builds!
     auto ObjName = GetActorLabel();
     auto ObjTitle = Title;
 
@@ -54,29 +55,19 @@ void ATrialsObjectiveInfo::InitData(FString MapName)
 
 void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
 {
-    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (Record < RecordTime)
     {
         RecordTime = Record;
     }
 
+    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
     ScorerPS->ObjectiveRecordTime = Record;
 
     auto ObjId = ObjInfo._id;
-    check(!ObjId.IsEmpty())
-
-    FRecordInfo RecInfo;
-    RecInfo.Value = Record;
-    RecInfo.PlayerId = ScorerPS->PlayerInfo._id;
-    check(!RecInfo.PlayerId.IsEmpty())
+    checkSlow(!ObjId.IsEmpty())
 
     auto* API = GetAPI();
-    API->Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), 
-        ATrialsAPI::ToJSON(RecInfo),
-        [this](const FAPIResult& Data) {
-            FRecordInfo RecInfo;
-            ATrialsAPI::FromJSON(Data, &RecInfo);
-        });
+    API->SubmitRecord(Record, ObjId, ScorerPS->PlayerInfo._id);
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
@@ -84,7 +75,7 @@ AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
     return this->PlayerStart;
 }
 
-void ATrialsObjectiveInfo::ActivateObjective(AUTPlayerController* PC)
+void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
     if (PC == nullptr)
     {
@@ -121,7 +112,7 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     }
 }
 
-void ATrialsObjectiveInfo::DisableObjective(AUTPlayerController* PC, bool bDeActivate /*= false*/)
+void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
 {
     if (PC == nullptr)
     {
@@ -136,7 +127,7 @@ void ATrialsObjectiveInfo::DisableObjective(AUTPlayerController* PC, bool bDeAct
     PS->EndObjectiveTimer();
 }
 
-bool ATrialsObjectiveInfo::IsEnabled(AUTPlayerController* PC)
+bool ATrialsObjectiveInfo::IsEnabled(APlayerController* PC)
 {
     if (PC == nullptr) return false;
 
@@ -144,7 +135,7 @@ bool ATrialsObjectiveInfo::IsEnabled(AUTPlayerController* PC)
     return PS->ActiveObjectiveInfo == this;
 }
 
-bool ATrialsObjectiveInfo::IsActive(AUTPlayerController* PC)
+bool ATrialsObjectiveInfo::IsActive(APlayerController* PC)
 {
     if (PC == nullptr) return false;
 
