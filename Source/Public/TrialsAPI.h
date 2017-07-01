@@ -149,16 +149,16 @@ typedef TFunction<void(const FAPIError Error)> FAPIOnError;
 UCLASS()
 class TRIALS_API ATrialsAPI : public AActor
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+    
 public:	
     FString BaseURL;
     FString AuthToken;
 
     ATrialsAPI();
 
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
+    void BeginPlay() override;
+    void Tick(float DeltaTime) override;
 
     typedef TFunction<void()> FAuthenticate;
     void Authenticate(const FString& APIBaseURL, const FString& APIToken, const FString& ClientName, const FAuthenticate& OnResponse);

@@ -1,23 +1,14 @@
 #include "Trials.h"
 #include "TrialsGameState.h"
-#include "TrialsObjectiveInfo.h"
 
 ATrialsGameState::ATrialsGameState(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
 {
 }
 
-void ATrialsGameState::BeginPlay()
-{
-    for (TActorIterator<ATrialsObjectiveInfo> It(GetWorld()); It; ++It )
-    {
-        Objectives.Add(*It);
-    }
-}
-
 void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
 bool ATrialsGameState::AllowMinimapFor(AUTPlayerState* PS)
@@ -31,18 +22,15 @@ bool ATrialsGameState::OnSameTeam(const AActor* Actor1, const AActor* Actor2)
 {
     const IUTTeamInterface* TeamInterface1 = Cast<IUTTeamInterface>(Actor1);
     const IUTTeamInterface* TeamInterface2 = Cast<IUTTeamInterface>(Actor2);
-    if (TeamInterface1 == NULL || TeamInterface2 == NULL)
+    if (TeamInterface1 == nullptr || TeamInterface2 == nullptr)
     {
         return false;
     }
-    else if (TeamInterface1->IsFriendlyToAll() || TeamInterface2->IsFriendlyToAll())
+    if (TeamInterface1->IsFriendlyToAll() || TeamInterface2->IsFriendlyToAll())
     {
         return true;
     }
-    else
-    {
-        uint8 TeamNum1 = TeamInterface1->GetTeamNum();
-        uint8 TeamNum2 = TeamInterface2->GetTeamNum();
-        return TeamNum1 == TeamNum2;
-    }
+    uint8 TeamNum1 = TeamInterface1->GetTeamNum();
+    uint8 TeamNum2 = TeamInterface2->GetTeamNum();
+    return TeamNum1 == TeamNum2;
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrialsObjectiveInfo.h"
+#include "TrialsObjective.h"
 #include "TrialsGameMode.h"
 
 #include "TrialsGameState.generated.h"
@@ -8,14 +8,22 @@
 UCLASS()
 class ATrialsGameState : public AUTGameState
 {
-	GENERATED_UCLASS_BODY()
+    GENERATED_UCLASS_BODY()
 
-public:
-    UPROPERTY(BlueprintReadOnly, Category = Trials)
-    TArray<ATrialsObjectiveInfo*> Objectives;
+    UPROPERTY(BlueprintReadOnly, Category = Trials, DisplayName = "Objective Targets")
+    TArray<ATrialsObjective*> Objectives;
 
-    virtual void BeginPlay() override;
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    virtual bool AllowMinimapFor(AUTPlayerState* PS) override;
-    virtual bool OnSameTeam(const AActor* Actor1, const AActor* Actor2) override;
+    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    bool AllowMinimapFor(AUTPlayerState* PS) override;
+    bool OnSameTeam(const AActor* Actor1, const AActor* Actor2) override;
+
+    void AddObjective(ATrialsObjective* Obj)
+    {
+        Objectives.Add(Obj);
+    }
+
+    void RemoveObjective(ATrialsObjective* Obj)
+    {
+        Objectives.Remove(Obj);
+    }
 };

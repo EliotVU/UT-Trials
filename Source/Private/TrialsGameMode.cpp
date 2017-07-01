@@ -8,11 +8,11 @@
 #include "TrialsAPI.h"
 
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+    : Super(ObjectInitializer)
 {
     PlayerControllerClass = ATrialsPlayerController::StaticClass();
-	GameStateClass = ATrialsGameState::StaticClass();
-	PlayerStateClass = ATrialsPlayerState::StaticClass();
+    GameStateClass = ATrialsGameState::StaticClass();
+    PlayerStateClass = ATrialsPlayerState::StaticClass();
     HUDClass = ATrialsHUD::StaticClass();
 
     TimeLimit = 0;

@@ -4,12 +4,13 @@
 
 #include "TrialsObjective.generated.h"
 
-UCLASS(abstract, Blueprintable)
+UCLASS(Abstract, Blueprintable)
 class TRIALS_API ATrialsObjective : public AActor
 {
     GENERATED_UCLASS_BODY()
 
-public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = Objective)
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = Objective, DisplayName = Objective)
     ATrialsObjectiveInfo* ObjectiveInfo;
+
+    void BeginPlay() override;
  };

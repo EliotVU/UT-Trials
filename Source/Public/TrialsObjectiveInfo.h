@@ -13,12 +13,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerControl
  * Or use the pre-built BP_TrialsProximityObjective with a link to your TrialsObjectiveInfo instance
  * - along with a BP_Trials_Objective_Shield to activate the objective.
  */
-UCLASS()
+UCLASS(DisplayName = "Trials Objective")
 class TRIALS_API ATrialsObjectiveInfo : public AInfo
 {
-	GENERATED_UCLASS_BODY()
+    GENERATED_UCLASS_BODY()
 
-public:
     // Cached remote data.
     FObjInfo ObjInfo;
 
@@ -34,7 +33,7 @@ public:
 
     /* A PlayerStart for those who have died during this objective. */
     UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
-	AUTPlayerStart* PlayerStart;
+    AUTPlayerStart* PlayerStart;
 
     float RecordTime;
     float AvgRecordTime; // set at runtime
@@ -43,7 +42,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Record)
     float DevRecordTime;
 
-    virtual void BeginPlay() override;
+    void BeginPlay() override;
 
     void InitData(FString MapId);
     void ScoreRecord(float Record, AUTPlayerController* PC);

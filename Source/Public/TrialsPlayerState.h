@@ -9,9 +9,8 @@
 UCLASS()
 class ATrialsPlayerState : public AUTPlayerState
 {
-	GENERATED_UCLASS_BODY()
+    GENERATED_UCLASS_BODY()
 
-public:
     FPlayerInfo PlayerInfo;
     FRecordInfo ObjRecordInfo;
 
@@ -25,7 +24,7 @@ public:
     UPROPERTY(Replicated)
     float ObjectiveRecordTime;
 
-    virtual void Tick(float DeltaTime) override
+    void Tick(float DeltaTime) override
     {
         Super::Tick(DeltaTime);
 
@@ -48,22 +47,19 @@ public:
     }
 
     UFUNCTION(BlueprintCallable, Category = Objective)
-    float GetObjectiveRemainingTime() const
+    float GetObjectiveRemainingTime(const bool IsActive = false) const
     {
-        float Time = GetRacingRecordTime();
-        return Time > 0.0 
-            ? Time - GetObjectiveTimer() 
-            : GetObjectiveTimer();
+        return IsObjectiveTimerActive() || IsActive
+            ? GetRacingRecordTime() - GetObjectiveTimer()
+            : GetRacingRecordTime();
     }
 
     // Always race our own record time when possible.
     float GetRacingRecordTime() const
     {
-        return ObjectiveRecordTime > 0.0
-            ? ObjectiveRecordTime 
-            : (ActiveObjectiveInfo != nullptr
-                ? ActiveObjectiveInfo->RecordTime 
-                : 0.0);
+        return 
+            ObjectiveRecordTime > 0.0 ? ObjectiveRecordTime : 
+            (ActiveObjectiveInfo != nullptr ? ActiveObjectiveInfo->RecordTime : 0.0);
     }
 
     void StartObjectiveTimer()
@@ -126,7 +122,7 @@ public:
     static FText FormatTime(const float value)
     {
         float seconds = fabs(value);
-        int32 minutes = (int32)seconds/60;
+        int32 minutes = static_cast<int32>(seconds)/60;
         int32 hours = minutes/60;
         seconds = seconds - (minutes*60.f);
         minutes = minutes - (hours*60);

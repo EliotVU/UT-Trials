@@ -15,7 +15,9 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 
 void ATrialsObjectiveInfo::BeginPlay()
 {
-    if (!GetWorld()->IsNetMode(ENetMode::NM_Client) && GetWorld()->GetAuthGameMode<ATrialsGameMode>() == nullptr)
+    Super::BeginPlay();
+
+    if (!GetWorld()->IsNetMode(NM_Client) && GetWorld()->GetAuthGameMode<ATrialsGameMode>() == nullptr)
     {
         Destroy();
         return;
@@ -77,10 +79,8 @@ AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
 
 void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
-    if (PC == nullptr)
-    {
-        return;
-    }
+    if (PC == nullptr) return;
+
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (PS->ActiveObjectiveInfo != this)
     {
@@ -114,10 +114,8 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 
 void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
 {
-    if (PC == nullptr)
-    {
-        return;
-    }
+    if (PC == nullptr) return;
+
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (bDeActivate && PS->ActiveObjectiveInfo == this)
     {

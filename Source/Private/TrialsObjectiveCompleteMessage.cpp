@@ -1,6 +1,6 @@
 #include "Trials.h"
 #include "TrialsPlayerState.h"
-#include "TrialsObjective.h"
+
 #include "TrialsObjectiveCompleteMessage.h"
 
 UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FObjectInitializer& ObjectInitializer)
@@ -17,11 +17,11 @@ UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FOb
     bIsStatusAnnouncement = false;
 
     // TODO: Split messages by PlayerCompletedText and ObjectiveCompletedText where objective messages are for all time records and player for personal records!
-    ObjectiveCompletedText = NSLOCTEXT("Trials", "RecordSet", "{Player1Name} completed {Title} in {Time}!");
-    ObjectiveRecordTiedText = NSLOCTEXT("Trials", "RecordTied", "{Player1Name} completed {Title} with a tie to {Time}!");
-    ObjectiveRecordFailText = NSLOCTEXT("Trials", "RecordFail", "{Player1Name} failed {Title} by {Time}!");
-    ObjectiveRecordFirstText = NSLOCTEXT("Trials", "RecordFirst", "{Player1Name} completed {Title} in a record of {Time}!");
-    ObjectiveRecordNewText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} completed {Title} with a new time of {Time}!");
+    ObjectiveCompletedText = NSLOCTEXT("Trials", "RecordSet", "{Player1Name} completed {Title} in {Time} {TimeDiff}!");
+    ObjectiveRecordTiedText = NSLOCTEXT("Trials", "RecordTied", "{Player1Name} tied {Title} with {Time}!");
+    ObjectiveRecordFailText = NSLOCTEXT("Trials", "RecordFail", "{Player1Name} failed {Title} with {Time} {TimeDiff}!");
+    ObjectiveRecordFirstText = NSLOCTEXT("Trials", "RecordFirst", "{Player1Name} finished {Title} with {Time} {TimeDiff}!");
+    ObjectiveRecordNewText = NSLOCTEXT("Trials", "RecordNew", "{Player1Name} improvised {Title} with a new time of {Time} {TimeDiff}!");
 
     static ConstructorHelpers::FObjectFinder<USoundBase> RecordSetSoundFinder(TEXT("SoundCue'/Trials/RecordSet.RecordSet'"));
     RecordSetSound = RecordSetSoundFinder.Object;
@@ -49,17 +49,12 @@ void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32
     auto* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
 
     float Time = ScorerPS->LastScoreObjectiveTimer;
-    switch (Switch)
-    {
-        // Relative to obj's best time.
-    case 2:
-        Time = ScoredObjInfo->RecordTime - Time;
-        break;
-    }
+    float TimeDiff = ScorerPS->GetObjectiveRemainingTime(true); // FIXME: both are equal when player has beaten the record! Should be fixed by moving the timer to its own replicated actor instance that is kept alive for some time.
     
     Args.Add("Player1Name", FText::FromString(bTargetsPlayerState1 ? "You" : ScorerPS->PlayerName));
     Args.Add("Title", ScoredObjInfo->Title);
     Args.Add("Time", ScorerPS->FormatTime(Time));
+    Args.Add("TimeDiff", FText::FromString(TEXT("(") + ScorerPS->FormatTime(TimeDiff).ToString() + TEXT(")")));
 }
 
 void UTrialsObjectiveCompleteMessage::ClientReceive(const FClientReceiveData& ClientData) const

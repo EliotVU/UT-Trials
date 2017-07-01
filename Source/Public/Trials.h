@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core.h"
 #include "UnrealTournament.h"
-#include "Net/UnrealNetwork.h"
-#include "LogMacros.h"
+
+// DECLARE_LOG_CATEGORY_EXTERN(UTR, Log, All);
+// DECLARE_LOG_CATEGORY_EXTERN(UTRAPI, Log, All);
