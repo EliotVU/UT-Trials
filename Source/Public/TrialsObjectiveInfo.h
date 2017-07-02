@@ -49,7 +49,7 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 
     void BeginPlay() override;
 
-    void InitData(FString MapId);
+    void UpdateRecordState(FString MapId);
     void ScoreRecord(float Record, AUTPlayerController* PC);
 
     virtual AUTPlayerStart* GetPlayerSpawn(AController* Player);

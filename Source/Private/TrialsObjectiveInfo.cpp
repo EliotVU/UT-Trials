@@ -36,7 +36,7 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
     return GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
 }
 
-void ATrialsObjectiveInfo::InitData(FString MapName)
+void ATrialsObjectiveInfo::UpdateRecordState(FString MapName)
 {
     // FIXME: Only available in development builds!
     auto ObjName = GetActorLabel();
@@ -71,7 +71,10 @@ void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
     checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
 
     auto* API = GetAPI();
-    API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId);
+    API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId, [this](const FRecordInfo& RecInfo)
+    {
+        UpdateRecordState(GetWorld()->GetMapName());
+    });
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
@@ -98,7 +101,6 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    check(PS);
 
     auto* TimerState = PS->TimerState;
     if (TimerState == nullptr || TimerState->State != TS_Active || PS->ActiveObjectiveInfo != this)
@@ -121,7 +123,10 @@ void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActiv
 {
     if (PC == nullptr) return;
 
+    // Happens if an objective disables for a player with no set objective!
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (PS == nullptr || PS->ActiveObjectiveInfo == nullptr) return;
+
     if (bDeActivate && PS->ActiveObjectiveInfo == this)
     {
         PS->SetObjective(nullptr);
