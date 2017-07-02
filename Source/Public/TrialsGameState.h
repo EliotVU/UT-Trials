@@ -10,6 +10,7 @@ class ATrialsGameState : public AUTGameState
 {
     GENERATED_UCLASS_BODY()
 
+    // TODO: Refactor to Objective Targets and add a separate Objectives array pointing to ObjectiveInfos'
     UPROPERTY(BlueprintReadOnly, Category = Trials, DisplayName = "Objective Targets")
     TArray<ATrialsObjective*> Objectives;
 

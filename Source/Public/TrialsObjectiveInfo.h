@@ -18,9 +18,6 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
-    // Cached remote data.
-    FObjInfo ObjInfo;
-
     /* A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 
      */
@@ -35,12 +32,20 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
     AUTPlayerStart* PlayerStart;
 
-    float RecordTime;
-    float AvgRecordTime; // set at runtime
-
     /* Your local objective time record. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Record)
     float DevRecordTime;
+
+    UPROPERTY(Replicated)
+    TArray<FRecordInfo> TopRecords;
+
+    UPROPERTY(Replicated)
+    float RecordTime;
+
+    UPROPERTY(Replicated)
+    float AvgRecordTime; // set at runtime
+
+    FString ObjectiveNetId;
 
     void BeginPlay() override;
 

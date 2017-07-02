@@ -161,17 +161,33 @@ public:
     void Tick(float DeltaTime) override;
 
     typedef TFunction<void()> FAuthenticate;
-    void Authenticate(const FString& APIBaseURL, const FString& APIToken, const FString& ClientName, const FAuthenticate& OnResponse);
+    void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnResponse);
 
     typedef TFunction<void(FMapInfo& MapInfo)> FGetMap;
     void GetMap(const FString MapName, const FGetMap& OnResponse);
+
+    /*
+    * Fetches data of an objective, including record time and a brief list of top records.
+    * If the objective isn't registered yet, it shall be created.
+    */
+    void GetObj(const FString& MapName, const FString& ObjName, const TFunction<void(const FObjInfo& ObjInfo)> OnSuccess = nullptr)
+    {
+        Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("/") + FGenericPlatformHttp::UrlEncode(ObjName) + TEXT("?create=1"),
+            [OnSuccess](const FAPIResult Result) {
+            FObjInfo ObjInfo;
+            FromJSON(Result, &ObjInfo);
+
+            if (OnSuccess)
+                OnSuccess(ObjInfo);
+        });
+    }
 
     void SubmitRecord(const float Value, const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
     {
         FRecordInfo RecInfo(Value, PlayerId);
         Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), [OnSuccess](const FAPIResult Result) {
             FRecordInfo RecInfo;
-            ATrialsAPI::FromJSON(Result, &RecInfo);
+            FromJSON(Result, &RecInfo);
 
             if (OnSuccess)
                 OnSuccess(RecInfo);

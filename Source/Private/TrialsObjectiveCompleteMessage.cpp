@@ -46,15 +46,19 @@ FText UTrialsObjectiveCompleteMessage::GetText(int32 Switch, bool bTargetsPlayer
 void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
 {
     auto* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);
-    auto* ScoredObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
+    auto* TimerState = Cast<ATrialsTimerState>(OptionalObject);
+    if (TimerState != nullptr)
+    {
+        Args.Add("Title", TimerState->Objective->Title);
 
-    float Time = ScorerPS->LastScoreObjectiveTimer;
-    float TimeDiff = ScorerPS->GetObjectiveRemainingTime(true); // FIXME: both are equal when player has beaten the record! Should be fixed by moving the timer to its own replicated actor instance that is kept alive for some time.
+        float Time = TimerState->GetTimer();
+        float TimeDiff = TimerState->GetRemainingTime();
+
+        Args.Add("Time", TimerState->FormatTime(Time));
+        Args.Add("TimeDiff", FText::FromString(TEXT("(") + TimerState->FormatTime(TimeDiff).ToString() + TEXT(")")));
+    }
     
     Args.Add("Player1Name", FText::FromString(bTargetsPlayerState1 ? "You" : ScorerPS->PlayerName));
-    Args.Add("Title", ScoredObjInfo->Title);
-    Args.Add("Time", ScorerPS->FormatTime(Time));
-    Args.Add("TimeDiff", FText::FromString(TEXT("(") + ScorerPS->FormatTime(TimeDiff).ToString() + TEXT(")")));
 }
 
 void UTrialsObjectiveCompleteMessage::ClientReceive(const FClientReceiveData& ClientData) const

@@ -12,5 +12,5 @@ class TRIALS_API ATrialsObjective : public AActor
     UPROPERTY(EditAnywhere, BlueprintReadOnly, NoClear, Category = Objective, DisplayName = Objective)
     ATrialsObjectiveInfo* ObjectiveInfo;
 
-    void BeginPlay() override;
+    void PostInitializeComponents() override;
  };

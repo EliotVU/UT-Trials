@@ -4,6 +4,7 @@
 #include "TrialsPlayerState.h"
 #include "TrialsGameMode.h"
 #include "TrialsAPI.h"
+#include "UnrealNetwork.h"
 
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -40,19 +41,20 @@ void ATrialsObjectiveInfo::InitData(FString MapName)
     // FIXME: Only available in development builds!
     auto ObjName = GetActorLabel();
     auto ObjTitle = Title;
+    auto ObjDescription = Description;
 
     auto* API = GetAPI();
-    API->Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("/") + FGenericPlatformHttp::UrlEncode(ObjName) + TEXT("?create=1"), 
-        [this](const FAPIResult& Data) {
-            ATrialsAPI::FromJSON(Data, &ObjInfo);
+    API->GetObj(MapName, ObjName, [this](const FObjInfo& ObjInfo)
+    {
+        ObjectiveNetId = ObjInfo._id;
+        TopRecords = ObjInfo.Records;
 
-            if (ObjInfo.Records.Num() == 0) {
+        float Time = ObjInfo.RecordTime > 0.f ? ObjInfo.RecordTime : DevRecordTime;
+        RecordTime = ATrialsTimerState::RoundTime(Time);
 
-            }
-
-            // Acquire last cached record time.
-            RecordTime = ATrialsPlayerState::RoundTime(ObjInfo.RecordTime > 0.f ? ObjInfo.RecordTime : DevRecordTime);
-        });
+        // TODO: Implement
+        AvgRecordTime = ATrialsTimerState::RoundTime(Time);
+    });
 }
 
 void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
@@ -63,13 +65,13 @@ void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
     }
 
     auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    ScorerPS->ObjectiveRecordTime = Record;
+    ScorerPS->UpdateRecordTime(Record);
 
-    auto ObjId = ObjInfo._id;
-    checkSlow(!ObjId.IsEmpty())
+    checkSlow(!ObjectiveNetId.IsEmpty())
+    checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
 
     auto* API = GetAPI();
-    API->SubmitRecord(Record, ObjId, ScorerPS->PlayerInfo._id);
+    API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId);
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
@@ -87,7 +89,7 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
         PS->SetObjective(this);
         PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 0, PS, nullptr, this);
     }
-    PS->StartObjectiveTimer();
+    PS->StartObjective();
 }
 
 void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
@@ -95,18 +97,21 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     if (PC == nullptr) return;
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
-    auto* CompleterPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (CompleterPS == nullptr || !CompleterPS->IsObjectiveTimerActive() || CompleterPS->ActiveObjectiveInfo != this)
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    check(PS);
+
+    auto* TimerState = PS->TimerState;
+    if (TimerState == nullptr || TimerState->State != TS_Active || PS->ActiveObjectiveInfo != this)
     {
         return;
     }
 
-    float Timer = CompleterPS->EndObjectiveTimer();
-    CompleterPS->LastScoreObjectiveTimer = Timer;
-
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)
     {
+        // Note: End before events
+        float Timer = PS->EndObjective();
+
         OnObjectiveComplete.Broadcast(PC);
         GM->ScoreTrialObjective(this, Timer, PC);
     }
@@ -122,7 +127,7 @@ void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActiv
         PS->SetObjective(nullptr);
         PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
     }
-    PS->EndObjectiveTimer();
+    PS->EndObjective();
 }
 
 bool ATrialsObjectiveInfo::IsEnabled(APlayerController* PC)
@@ -130,7 +135,7 @@ bool ATrialsObjectiveInfo::IsEnabled(APlayerController* PC)
     if (PC == nullptr) return false;
 
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return PS->ActiveObjectiveInfo == this;
+    return PS && PS->ActiveObjectiveInfo == this;
 }
 
 bool ATrialsObjectiveInfo::IsActive(APlayerController* PC)
@@ -138,5 +143,15 @@ bool ATrialsObjectiveInfo::IsActive(APlayerController* PC)
     if (PC == nullptr) return false;
 
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return PS->ActiveObjectiveInfo == this && PS->IsObjectiveTimerActive();
+    return PS && PS->ActiveObjectiveInfo == this 
+        && PS->TimerState && PS->TimerState->State == TS_Active;
+}
+
+void ATrialsObjectiveInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ATrialsObjectiveInfo, TopRecords);
+    DOREPLIFETIME(ATrialsObjectiveInfo, RecordTime);
+    DOREPLIFETIME(ATrialsObjectiveInfo, AvgRecordTime);
 }

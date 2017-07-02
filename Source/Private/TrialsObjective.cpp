@@ -11,9 +11,9 @@ ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitial
     NetPriority = 1.0;
 }
 
-void ATrialsObjective::BeginPlay()
+void ATrialsObjective::PostInitializeComponents()
 {
-    Super::BeginPlay();
+    Super::PostInitializeComponents();
     auto* GS = GetWorld()->GetGameState<ATrialsGameState>();
     if (GS)
     {
