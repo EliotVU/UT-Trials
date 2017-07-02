@@ -6,7 +6,7 @@
 
 #include "TrialsGameMode.generated.h"
 
-UCLASS(Blueprintable, Meta = (ChildCanTick), Config = Trials)
+UCLASS(Meta = (ChildCanTick), Config = Trials)
 class ATrialsGameMode : public AUTGameMode
 {
     GENERATED_UCLASS_BODY()
@@ -25,8 +25,6 @@ class ATrialsGameMode : public AUTGameMode
     void BeginPlay() override;
     void PostLogin(APlayerController* NewPlayer) override;
     void SetPlayerDefaults(APawn* PlayerPawn) override;
-    void FinishRestartPlayer(AController* NewPlayer, const FRotator& StartRotation) override;
-    bool ModifyDamage_Implementation(int32& Damage, FVector& Momentum, APawn* Injured, AController* InstigatedBy, const FHitResult& HitInfo, AActor* DamageCauser, TSubclassOf<UDamageType> DamageType) override;
     bool AllowSuicideBy(AUTPlayerController* PC) override;
     AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
     void DiscardInventory(APawn* Other, AController* Killer) override;
