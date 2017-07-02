@@ -18,7 +18,8 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
-    /* A title to be displayed to players. 
+    /**
+     * A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 
      */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
@@ -46,6 +47,14 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     float AvgRecordTime; // set at runtime
 
     FString ObjectiveNetId;
+
+    /**
+     * Inventory to give to player when this objective activates.
+     * 
+     * Note: When a player disables this objective he or she will be given an entire new Pawn as an anti-cheat measure.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
+    TArray< TSubclassOf<AUTInventory> > PlayerInventory;
 
     void BeginPlay() override;
 

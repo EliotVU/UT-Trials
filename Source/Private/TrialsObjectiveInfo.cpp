@@ -86,6 +86,19 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
     if (PC == nullptr) return;
 
+    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+    if (Char != nullptr)
+    {
+        for (auto i = 0; i < PlayerInventory.Num(); ++i)
+        {
+            auto* Inv = Char->CreateInventory(PlayerInventory[i]);
+            if (Inv != nullptr)
+            {
+                Char->AddInventory(Inv, false);
+            }
+        }
+    }
+
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (PS->ActiveObjectiveInfo != this)
     {
@@ -122,6 +135,36 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
 {
     if (PC == nullptr) return;
+
+    // EXPLOIT: Cleanup any projectile that were fired that may potentionally be exploited to boost themselves after restarting the objective.
+    // Handled in RestartPlayer
+    //for (TActorIterator<AUTProjectile> It(GetWorld()); It; ++It)
+    //{
+    //    if (It->InstigatorController == PC)
+    //    {
+    //        It->Destroy();
+    //    }
+    //}
+
+    // FIXME: Give player a new pawn at the same location instead?
+    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+    if (Char != nullptr)
+    {
+        // Handled here instead of GameMode, because it shouldn't be called on initial spawns.
+        auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
+        //Char->DiscardAllInventory();
+        //GameMode->GiveDefaultInventory(Char);
+
+        // FIXME: SetPlayerDefaults is stacking armor without this!
+        //Char->SetInitialHealth();
+        //Char->RemoveArmor(150);
+        //GameMode->SetPlayerDefaults(Char);
+
+        // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
+        Char->Reset();
+        PC->SetPawn(nullptr);
+        GameMode->RestartPlayer(PC);
+    }
 
     // Happens if an objective disables for a player with no set objective!
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
