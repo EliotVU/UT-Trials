@@ -20,6 +20,9 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     bAllowOvertime = false;
     MapPrefix = TEXT("STR");
     bTrackKillAssists = false;
+
+    ImpactHammerObject = FStringAssetReference(TEXT("/Trials/Weapons/BP_Trials_ImpactHammer.BP_Trials_ImpactHammer_C"));
+    bClearPlayerInventory = true;
 }
 
 void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
@@ -44,7 +47,7 @@ void ATrialsGameMode::APIReady()
 
     for (TActorIterator<ATrialsObjectiveInfo> It(GetWorld()); It; ++It)
     {
-        It->InitData(CurrentMapInfo.Name);
+        It->UpdateRecordState(CurrentMapInfo.Name);
     }
 
 }
@@ -65,9 +68,12 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
         LoginInfo.ProfileId = PS->UniqueId->ToString();
         LoginInfo.Name = PS->PlayerName;
 
-        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [this, PS](const FAPIResult& Data) {
-            ATrialsAPI::FromJSON(Data, &PS->PlayerInfo);
-            UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *PS->PlayerInfo.Name, *PS->PlayerInfo.CountryCode);
+        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [PS](const FAPIResult& Data) {
+            FPlayerInfo PlayerInfo;
+            ATrialsAPI::FromJSON(Data, &PlayerInfo);
+
+            PS->PlayerNetId = PlayerInfo._id;
+            UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *PlayerInfo.Name, *PlayerInfo.CountryCode);
         });
     }
 }
@@ -85,8 +91,7 @@ void ATrialsGameMode::FinishRestartPlayer(AController* NewPlayer, const FRotator
     auto* PS = Cast<ATrialsPlayerState>(NewPlayer->PlayerState);
     if (PS && PS->ActiveObjectiveInfo != nullptr)
     {
-        // TODO: Replicate, not simulated here.
-        PS->EndObjectiveTimer();
+        PS->EndObjective();
     }
 
     // EXPLOIT: Cleanup any projectile that was fired before this player's death.
@@ -109,7 +114,7 @@ bool ATrialsGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Moment
         AUTPlayerController* InstigatorPC = Cast<AUTPlayerController>(InstigatedBy);
         if (InstigatorPC && Cast<AUTPlayerState>(Injured->PlayerState))
         {
-            ((AUTPlayerState *)(Injured->PlayerState))->AnnounceSameTeam(InstigatorPC);
+            static_cast<AUTPlayerState*>(Injured->PlayerState)->AnnounceSameTeam(InstigatorPC);
         }
     }
     Super::ModifyDamage_Implementation(Damage, Momentum, Injured, InstigatedBy, HitInfo, DamageCauser, DamageType);
@@ -129,7 +134,8 @@ AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, con
     {
         return PS->ActiveObjectiveInfo->GetPlayerSpawn(Player);
     }
-    return Super::FindPlayerStart_Implementation(Player, IncomingName);
+    // Otherwise use any playerstart but those with a tag.
+    return Super::FindPlayerStart_Implementation(Player, TEXT(""));
 }
 
 // EXPLOIT: Don't drop any items, only discard.
@@ -189,7 +195,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer
 
 
     // ...New time?!
-    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, Obj);
+    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, ScorerPS->TimerState);
 
     // TODO: Add record event here
 }
