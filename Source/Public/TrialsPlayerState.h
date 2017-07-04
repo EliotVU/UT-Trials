@@ -2,7 +2,6 @@
 
 #include "TrialsObjectiveInfo.h"
 #include "TrialsTimerState.h"
-#include "TrialsAPI.h"
 
 #include "TrialsPlayerState.generated.h"
 
@@ -20,8 +19,17 @@ class ATrialsPlayerState : public AUTPlayerState
     ATrialsTimerState* TimerState;
 
     /* The player's record time for the current active objective. <= 0 == N/A */
-    UPROPERTY(Replicated)
+    UPROPERTY(Replicated, BlueprintReadOnly)
     float ObjectiveRecordTime;
+
+    /**
+     * List of objective instances that have been unlocked in the current map. Objectives that were never locked are not included!
+     * TODO: Fetch unlocked objectives from API.
+     */
+    UPROPERTY(ReplicatedUsing = OnRep_UnlockedObjectives, BlueprintReadOnly)
+    TArray<ATrialsObjectiveInfo*> UnlockedObjectives;
+
+    void RegisterUnlockedObjective(ATrialsObjectiveInfo* Objective);
 
     float StartObjective() const;
     float EndObjective() const;
@@ -36,4 +44,8 @@ class ATrialsPlayerState : public AUTPlayerState
     }
 
     void GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const override;
+
+protected:
+    UFUNCTION()
+    void OnRep_UnlockedObjectives();
 };

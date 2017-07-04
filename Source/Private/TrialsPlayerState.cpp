@@ -10,6 +10,31 @@ ATrialsPlayerState::ATrialsPlayerState(const FObjectInitializer& ObjectInitializ
 {
 }
 
+// TODO: Fetch unlocked objectives from API.
+void ATrialsPlayerState::RegisterUnlockedObjective(ATrialsObjectiveInfo* Objective)
+{
+    check(Objective);
+    if (UnlockedObjectives.Contains(Objective))
+    {
+        return;
+    }
+    UnlockedObjectives.Add(Objective);
+    // Simulate for offline play.
+    if (GetWorld()->IsNetMode(NM_Standalone))
+    {
+        OnRep_UnlockedObjectives();
+    }
+}
+
+void ATrialsPlayerState::OnRep_UnlockedObjectives()
+{
+    for (auto& Obj : UnlockedObjectives)
+    {
+        Obj->SetLocked(false);
+    }
+}
+
+
 float ATrialsPlayerState::StartObjective() const
 {
     check(TimerState);
@@ -85,4 +110,5 @@ void ATrialsPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
     DOREPLIFETIME(ATrialsPlayerState, ActiveObjectiveInfo);
     DOREPLIFETIME(ATrialsPlayerState, TimerState);
     DOREPLIFETIME(ATrialsPlayerState, ObjectiveRecordTime);
+    DOREPLIFETIME_CONDITION(ATrialsPlayerState, UnlockedObjectives, COND_OwnerOnly);
 }

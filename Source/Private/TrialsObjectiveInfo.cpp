@@ -29,6 +29,16 @@ void ATrialsObjectiveInfo::BeginPlay()
     {
         PlayerStart->bIgnoreInNonTeamGame = true; // Disable default spawning.
     }
+
+    if (RequisiteObjective != nullptr)
+    {
+        if (Role == ROLE_Authority)
+        {
+            RequisiteObjective->OnObjectiveComplete.AddDynamic(this, &ATrialsObjectiveInfo::OnRequisiteCompleted);
+            RequisiteObjective->LockedObjectives.Add(this);
+        }
+        SetLocked(true);
+    }
 }
 
 ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
@@ -86,6 +96,16 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
     if (PC == nullptr) return;
 
+    if (IsLocked(PC))
+    {
+        auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+        if (Char != nullptr)
+        {
+            Char->PlayerSuicide();
+        }
+        return;
+    }
+
     auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
     if (Char != nullptr)
     {
@@ -124,6 +144,7 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)
     {
+        PS->RegisterUnlockedObjective(this);
         // Note: End before events
         float Timer = PS->EndObjective();
 
@@ -193,6 +214,36 @@ bool ATrialsObjectiveInfo::IsActive(APlayerController* PC)
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     return PS && PS->ActiveObjectiveInfo == this 
         && PS->TimerState && PS->TimerState->State == TS_Active;
+}
+
+void ATrialsObjectiveInfo::OnRequisiteCompleted(AUTPlayerController* PC)
+{
+    if (PC == nullptr)
+        return;
+
+    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    ScorerPS->RegisterUnlockedObjective(this);
+}
+
+bool ATrialsObjectiveInfo::IsLocked(APlayerController* PC)
+{
+    if (Role == ROLE_Authority)
+    {
+        if (PC != nullptr && bLockedLocale)
+        {
+            // check objectives list.
+            auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+            return PS && !PS->UnlockedObjectives.Contains(this);
+        }
+        return false;
+    }
+    return bLockedLocale;
+}
+
+void ATrialsObjectiveInfo::SetLocked(bool bIsLocked)
+{
+    bLockedLocale = bIsLocked;
+    OnLockedChange.Broadcast(bLockedLocale);
 }
 
 void ATrialsObjectiveInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

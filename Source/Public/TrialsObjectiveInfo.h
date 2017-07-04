@@ -6,6 +6,7 @@
 #include "TrialsObjectiveInfo.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerController*, PC);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveLockChange, bool, IsLocked);
 
 /**
  * Defines an objective in your Trials map. 
@@ -33,8 +34,17 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
     AUTPlayerStart* PlayerStart;
 
+    /**
+     * If set, objective will be locked if set objective is not unlocked (on a player basis).
+     */
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Objective)
+    ATrialsObjectiveInfo* RequisiteObjective;
+
+    /* Objectives that are held locked by this objective. */
+    TArray<ATrialsObjectiveInfo*> LockedObjectives;
+
     /* Your local objective time record. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Record)
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
     float DevRecordTime;
 
     UPROPERTY(Replicated)
@@ -86,6 +96,21 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
     UPROPERTY(BlueprintAssignable, Category = Objective)
     FObjectiveComplete OnObjectiveComplete;
+
+    UFUNCTION()
+    void OnRequisiteCompleted(AUTPlayerController* PC);
+
+    UFUNCTION(BlueprintCallable, Category = Objective)
+    virtual bool IsLocked(APlayerController* PC);
+
+    virtual void SetLocked(bool bIsLocked);
+
+    /* Fired when this objective has been completed. Fired by CompleteObjective()*/
+    UPROPERTY(BlueprintAssignable, Category = Objective)
+    FObjectiveLockChange OnLockedChange;
+
+protected:
+    bool bLockedLocale;
 
 private:
     ATrialsAPI* GetAPI() const;
