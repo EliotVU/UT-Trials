@@ -47,9 +47,9 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
         FRecordInfo RecInfo;
         if (i == 0)
         {
-            RecInfo.Value = 0.0;
+            RecInfo.Value = Target->DevRecordTime;
             RecInfo.Player.Name = TEXT("Developer");
-            DrawRecordItem(RecInfo, Target->DevRecordTime);
+            DrawRecordItem(RecInfo, 0);
         }
 
         RecInfo.Value = OwnerPS->ObjectiveRecordTime;

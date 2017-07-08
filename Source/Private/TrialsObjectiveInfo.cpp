@@ -5,8 +5,6 @@
 #include "TrialsGameMode.h"
 #include "TrialsAPI.h"
 #include "UnrealNetwork.h"
-#include "UObjectToken.h"
-#include "MapErrors.h"
 
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -17,6 +15,10 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 }
 
 #ifdef WITH_EDITOR
+
+#include "UObjectToken.h"
+#include "MapErrors.h"
+
 void ATrialsObjectiveInfo::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
