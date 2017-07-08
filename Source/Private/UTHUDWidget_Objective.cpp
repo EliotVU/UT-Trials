@@ -62,13 +62,14 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
 
 void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime)
 {
-    auto* PS = Cast<ATrialsPlayerState>(UTPlayerOwner->PlayerState);
-    if (!PS) return;
+    auto* ViewTarget = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
+    auto* ViewPS = Cast<ATrialsPlayerState>(ViewTarget ? ViewTarget->PlayerState : UTPlayerOwner->PlayerState);
+    if (!ViewPS) return;
 
     for (int32 i = 0; i < GameState->Objectives.Num(); ++i)
     {
         auto* target = GameState->Objectives[i];
-        if (target && (PS->ActiveObjectiveInfo == nullptr || target->ObjectiveInfo == PS->ActiveObjectiveInfo))
+        if (target && (ViewPS->ActiveObjectiveInfo == nullptr || target->ObjectiveInfo == ViewPS->ActiveObjectiveInfo))
         {
             DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, target);
         }
@@ -77,12 +78,12 @@ void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector
 
 void UUTHUDWidget_Objective::DrawStatus(ATrialsGameState* GameState, float DeltaTime)
 {
-    auto* ViewedPawn = Cast<APawn>(UTPlayerOwner->GetViewTarget());
-    auto* ViewPS = ViewedPawn ? Cast<ATrialsPlayerState>(ViewedPawn->PlayerState) : nullptr;
-    auto* OwnerPS = ViewPS ? ViewPS : Cast<ATrialsPlayerState>(UTPlayerOwner->UTPlayerState);
-    if (OwnerPS != nullptr)
+    auto* ViewTarget = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
+    auto* ViewPS = Cast<ATrialsPlayerState>(ViewTarget ? ViewTarget->PlayerState : UTPlayerOwner->PlayerState);
+
+    if (ViewPS != nullptr)
     {
-        auto* Target = OwnerPS->ActiveObjectiveInfo;
+        auto* Target = ViewPS->ActiveObjectiveInfo;
         if (Target != nullptr)
         {
             FText TitleText = Target->Title;
@@ -95,7 +96,7 @@ void UUTHUDWidget_Objective::DrawStatus(ATrialsGameState* GameState, float Delta
             RenderObj_Text(RecordText);
         }
 
-        auto* TimerState = OwnerPS->TimerState;
+        auto* TimerState = ViewPS->TimerState;
         if (Target != nullptr && TimerState != nullptr)
         {
             bool IsActive = TimerState->State == TS_Active;
