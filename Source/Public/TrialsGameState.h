@@ -14,10 +14,6 @@ class ATrialsGameState : public AUTGameState
     UPROPERTY(BlueprintReadOnly, Category = Trials, DisplayName = "Objective Targets")
     TArray<ATrialsObjective*> Objectives;
 
-    void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-    bool AllowMinimapFor(AUTPlayerState* PS) override;
-    bool OnSameTeam(const AActor* Actor1, const AActor* Actor2) override;
-
     void AddObjective(ATrialsObjective* Obj)
     {
         Objectives.Add(Obj);
@@ -27,4 +23,7 @@ class ATrialsGameState : public AUTGameState
     {
         Objectives.Remove(Obj);
     }
+
+    bool AllowMinimapFor(AUTPlayerState* PS) override;
+    bool OnSameTeam(const AActor* Actor1, const AActor* Actor2) override;
 };

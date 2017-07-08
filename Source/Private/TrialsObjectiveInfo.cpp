@@ -49,7 +49,7 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
 void ATrialsObjectiveInfo::UpdateRecordState(FString MapName)
 {
     // FIXME: Only available in development builds!
-    auto ObjName = GetActorLabel();
+    auto ObjName = RecordId.IsEmpty() ? GetActorLabel() : RecordId;
     auto ObjTitle = Title;
     auto ObjDescription = Description;
 

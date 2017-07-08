@@ -6,16 +6,14 @@
 ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    SetReplicates(true);
     bAlwaysRelevant = true;
-    NetPriority = 1.0;
 }
 
 void ATrialsObjective::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
     auto* GS = GetWorld()->GetGameState<ATrialsGameState>();
-    if (GS)
+    if (GS != nullptr)
     {
         GS->AddObjective(this);
     }

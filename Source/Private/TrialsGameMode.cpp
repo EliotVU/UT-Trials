@@ -56,6 +56,7 @@ void ATrialsGameMode::BeginPlay()
     Super::BeginPlay();
 }
 
+// Note: Called prior to API initialization!
 void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
@@ -67,12 +68,35 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
         LoginInfo.ProfileId = PS->UniqueId->ToString();
         LoginInfo.Name = PS->PlayerName;
 
-        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [PS](const FAPIResult& Data) {
+        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [this, PS](const FAPIResult& Data) {
             FPlayerInfo PlayerInfo;
             ATrialsAPI::FromJSON(Data, &PlayerInfo);
 
             PS->PlayerNetId = PlayerInfo._id;
             UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *PlayerInfo.Name, *PlayerInfo.CountryCode);
+
+
+            // localhost:8080/api/maps/STR-Temple/players/5944211eaeaaeccdf6f782de
+            RecordsAPI->Fetch(TEXT("api/maps/") + GetWorld()->GetMapName() + TEXT("/players/") + PS->PlayerNetId, [this, PS](const FAPIResult& Data)
+            {
+                FPlayerObjectiveInfo UnlockedInfo;
+                ATrialsAPI::FromJSON(Data, &UnlockedInfo);
+
+                auto& MapObjs = Cast<ATrialsGameState>(GameState)->Objectives;
+                for (const auto& Target : MapObjs)
+                {
+                    if (Target == nullptr) continue;
+
+                    bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
+                    {
+                        return Item.Title == Target->ObjectiveInfo->RecordId;
+                    });
+                    if (IsCompleted)
+                    {
+                        PS->RegisterUnlockedObjective(Target->ObjectiveInfo);
+                    }
+                }
+            });
         });
     }
 }

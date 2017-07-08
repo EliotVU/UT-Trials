@@ -19,6 +19,9 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
+    UPROPERTY(VisibleInstanceOnly, Category = Record)
+    FString RecordId;
+
     /**
      * A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 

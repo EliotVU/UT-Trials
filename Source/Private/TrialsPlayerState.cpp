@@ -10,7 +10,6 @@ ATrialsPlayerState::ATrialsPlayerState(const FObjectInitializer& ObjectInitializ
 {
 }
 
-// TODO: Fetch unlocked objectives from API.
 void ATrialsPlayerState::RegisterUnlockedObjective(ATrialsObjectiveInfo* Objective)
 {
     check(Objective);

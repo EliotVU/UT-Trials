@@ -65,6 +65,17 @@ public:
 };
 
 USTRUCT()
+struct FPlayerObjectiveInfo
+{
+    GENERATED_USTRUCT_BODY()
+
+public:
+    UPROPERTY()
+    TArray<FObjectiveInfo> Objs; // Only includes: id, name, and recordTime(of player).
+
+};
+
+USTRUCT()
 struct FMapInfo
 {
     GENERATED_USTRUCT_BODY()

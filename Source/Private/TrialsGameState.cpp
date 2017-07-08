@@ -6,11 +6,6 @@ ATrialsGameState::ATrialsGameState(const FObjectInitializer& ObjectInitializer)
 {
 }
 
-void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-}
-
 bool ATrialsGameState::AllowMinimapFor(AUTPlayerState* PS)
 {
     return true;
