@@ -13,4 +13,5 @@ class TRIALS_API ATrialsObjective : public AActor
     ATrialsObjectiveInfo* ObjectiveInfo;
 
     void PostInitializeComponents() override;
+    void Destroyed() override;
  };

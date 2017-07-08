@@ -70,8 +70,14 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 
     float AnimationAlpha;
 
+    UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
+    class AUTCharacter* ViewingCharacter;
+
     void InitializeWidget(AUTHUD* Hud) override;
+
+    void PreDraw(float DeltaTime, AUTHUD* InUTHUDOwner, UCanvas* InCanvas, FVector2D InCanvasCenter) override;
     void Draw_Implementation(float DeltaTime) override;
+    void PostDraw(float RenderedTime) override;
 
     bool ShouldDraw_Implementation(bool bShowScores) override
     {
@@ -80,7 +86,7 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 
 protected:
     virtual void DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime);
-    virtual void DrawStatus(ATrialsGameState* GameState, float DeltaTime);
+    virtual void DrawStatus(float DeltaTime);
     virtual void DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjective* Obj);
     FVector GetAdjustedScreenPosition(const FVector& WorldPosition, const FVector& ViewPoint, const FVector& ViewDir, float Dist, float IconSize, bool& bDrawEdgeArrow);
     void DrawEdgeArrow(FVector InWorldPosition, FVector PlayerViewPoint, FRotator PlayerViewRotation, FVector InDrawScreenPosition, float CurrentWorldAlpha, float WorldRenderScale);

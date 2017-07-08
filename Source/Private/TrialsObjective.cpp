@@ -6,15 +6,26 @@
 ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    bAlwaysRelevant = true;
 }
 
 void ATrialsObjective::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
+    if (Role == ROLE_Authority)
+    {
+        auto* GS = GetWorld()->GetGameState<ATrialsGameState>();
+        if (GS != nullptr)
+        {
+            GS->AddTarget(this);
+        }
+    }
+}
+
+void ATrialsObjective::Destroyed()
+{
     auto* GS = GetWorld()->GetGameState<ATrialsGameState>();
     if (GS != nullptr)
     {
-        GS->AddObjective(this);
+        GS->RemoveTarget(this);
     }
 }

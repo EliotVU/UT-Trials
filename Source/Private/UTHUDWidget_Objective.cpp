@@ -47,6 +47,15 @@ void UUTHUDWidget_Objective::InitializeWidget(AUTHUD* Hud)
     Super::InitializeWidget(Hud);
 }
 
+void UUTHUDWidget_Objective::PreDraw(float DeltaTime, AUTHUD* InUTHUDOwner, UCanvas* InCanvas, FVector2D InCanvasCenter)
+{
+    Super::PreDraw(DeltaTime, InUTHUDOwner, InCanvas, InCanvasCenter);
+    if (UTPlayerOwner != nullptr)
+    {
+        ViewingCharacter = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
+    }
+}
+
 void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
 {
     auto* GameState = Cast<ATrialsGameState>(UTGameState);
@@ -57,30 +66,32 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
 
     UTPlayerOwner->GetPlayerViewPoint(ViewPoint, ViewRotation);
     DrawIndicators(GameState, ViewPoint, ViewRotation, DeltaTime);
-    DrawStatus(GameState, DeltaTime);
+    DrawStatus(DeltaTime);
+}
+
+void UUTHUDWidget_Objective::PostDraw(float RenderedTime)
+{
+    Super::PostDraw(RenderedTime);
+    ViewingCharacter = nullptr;
 }
 
 void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime)
 {
-    auto* ViewTarget = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
-    auto* ViewPS = Cast<ATrialsPlayerState>(ViewTarget ? ViewTarget->PlayerState : UTPlayerOwner->PlayerState);
-    if (!ViewPS) return;
+    auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
+    if (ViewPS == nullptr) return;
 
-    for (int32 i = 0; i < GameState->Objectives.Num(); ++i)
+    for (auto& Target : GameState->Objectives)
     {
-        auto* target = GameState->Objectives[i];
-        if (target && (ViewPS->ActiveObjectiveInfo == nullptr || target->ObjectiveInfo == ViewPS->ActiveObjectiveInfo))
+        if (ViewPS->ActiveObjectiveInfo == nullptr || Target->ObjectiveInfo == ViewPS->ActiveObjectiveInfo)
         {
-            DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, target);
+            DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, Target);
         }
     }
 }
 
-void UUTHUDWidget_Objective::DrawStatus(ATrialsGameState* GameState, float DeltaTime)
+void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
 {
-    auto* ViewTarget = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
-    auto* ViewPS = Cast<ATrialsPlayerState>(ViewTarget ? ViewTarget->PlayerState : UTPlayerOwner->PlayerState);
-
+    auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
     if (ViewPS != nullptr)
     {
         auto* Target = ViewPS->ActiveObjectiveInfo;
@@ -148,93 +159,67 @@ void UUTHUDWidget_Objective::DrawStatus(ATrialsGameState* GameState, float Delta
 void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjective* Target)
 {
     bScaleByDesignedResolution = false;
-
-    bool bSpectating = UTPlayerOwner->PlayerState && UTPlayerOwner->PlayerState->bOnlySpectator;
-
     IconTemplate.RenderColor = FLinearColor::Yellow;
     CameraIconTemplate.RenderColor = IconTemplate.RenderColor;
 
     // Draw the flag / flag base in the world
-    float Dist = (Target->GetActorLocation() - PlayerViewPoint).Size();
     float WorldRenderScale = RenderScale * MaxIconScale;
-
-    bool bDrawInWorld = false;
-    bool bDrawEdgeArrow = false;
-
-    FVector DrawScreenPosition;
-    FVector WorldPosition = Target->GetActorLocation() + FVector(0.f, 0.f, 128 * 3.f);
-
     float OldAlpha = IconTemplate.RenderOpacity;
 
+    FVector WorldPosition = Target->GetActorLocation() + FVector(0.f, 0.f, 128 * 0.75f);
     FVector ViewDir = PlayerViewRotation.Vector();
-
+    float Dist = (Target->GetActorLocation() - PlayerViewPoint).Size();
     float Edge = CircleTemplate.GetWidth()*WorldRenderScale;
-    bool bShouldDrawIcon = true;
+    bool bDrawEdgeArrow = false;
+    FVector DrawScreenPosition = GetAdjustedScreenPosition(WorldPosition, PlayerViewPoint, ViewDir, Dist, Edge, bDrawEdgeArrow);
 
-    if ((bSpectating || bShouldDrawIcon))
+    float PctFromCenter = (DrawScreenPosition - FVector(0.5f*GetCanvas()->ClipX, 0.5f*GetCanvas()->ClipY, 0.f)).Size() / GetCanvas()->ClipX;
+    float CurrentWorldAlpha = InWorldAlpha * FMath::Min(6.f*PctFromCenter, 1.f);
+
+    // don't overlap player beacon
+    UFont* TinyFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->TinyFont;
+    float X, Y;
+    float Scale = Canvas->ClipX / 1920.f;
+    Canvas->TextSize(TinyFont, FString("+999   A999"), X, Y, Scale, Scale);
+
+    if (!bDrawEdgeArrow)
     {
-        WorldPosition = Target->GetActorLocation();
-        WorldPosition += FVector(0.f, 0.f, 128 * 0.75f);
-        
-        bDrawInWorld = true;
-        DrawScreenPosition = GetAdjustedScreenPosition(WorldPosition, PlayerViewPoint, ViewDir, Dist, Edge, bDrawEdgeArrow);
+        float MinDistSq = FMath::Square(0.06f*GetCanvas()->ClipX);
+        float ActualDistSq = FMath::Square(DrawScreenPosition.X - 0.5f*GetCanvas()->ClipX) + FMath::Square(DrawScreenPosition.Y - 0.5f*GetCanvas()->ClipY);
+        if (ActualDistSq > MinDistSq)
+        {
+            DrawScreenPosition.Y -= 1.5f*Y;
+        }
+    }
+    DrawScreenPosition.X -= RenderPosition.X;
+    DrawScreenPosition.Y -= RenderPosition.Y;
+
+    TitleItem.RenderOpacity = CurrentWorldAlpha;
+    DetailsItem.RenderOpacity = CurrentWorldAlpha;
+    IconTemplate.RenderOpacity = CurrentWorldAlpha;
+    CircleTemplate.RenderOpacity = CurrentWorldAlpha;
+    CircleBorderTemplate.RenderOpacity = CurrentWorldAlpha;
+
+    float InWorldFlagScale = WorldRenderScale;
+    RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* InWorldFlagScale, CircleTemplate.GetHeight()* InWorldFlagScale);
+    RenderObj_TextureAt(CircleBorderTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleBorderTemplate.GetWidth()* InWorldFlagScale, CircleBorderTemplate.GetHeight()* InWorldFlagScale);
+
+    if (bDrawEdgeArrow)
+    {
+        DrawEdgeArrow(WorldPosition, PlayerViewPoint, PlayerViewRotation, DrawScreenPosition, CurrentWorldAlpha, WorldRenderScale);
+
+        FFormatNamedArguments Args;
+        FText NumberText = FText::AsNumber(int32(0.01f*Dist));
+        Args.Add("Dist", NumberText);
+
+        DetailsItem.Text = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "{Dist}m"), Args);
+        RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
     }
     else
     {
-        DrawScreenPosition = GetAdjustedScreenPosition(WorldPosition, PlayerViewPoint, ViewDir, Dist, Edge, bDrawEdgeArrow);
-    }
-
-    // Look to see if we should be displaying the in-world indicator for the flag.
-    if (bDrawInWorld)
-    {
-        float PctFromCenter = (DrawScreenPosition - FVector(0.5f*GetCanvas()->ClipX, 0.5f*GetCanvas()->ClipY, 0.f)).Size() / GetCanvas()->ClipX;
-        float CurrentWorldAlpha = InWorldAlpha * FMath::Min(6.f*PctFromCenter, 1.f);
-
-        // don't overlap player beacon
-        UFont* TinyFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->TinyFont;
-        float X, Y;
-        float Scale = Canvas->ClipX / 1920.f;
-        Canvas->TextSize(TinyFont, FString("+999   A999"), X, Y, Scale, Scale);
-
-        if (!bDrawEdgeArrow)
+        auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
+        if (ViewPS != nullptr)
         {
-            float MinDistSq = FMath::Square(0.06f*GetCanvas()->ClipX);
-            float ActualDistSq = FMath::Square(DrawScreenPosition.X - 0.5f*GetCanvas()->ClipX) + FMath::Square(DrawScreenPosition.Y - 0.5f*GetCanvas()->ClipY);
-            if (ActualDistSq > MinDistSq)
-            {
-                DrawScreenPosition.Y -= 1.5f*Y;
-            }
-        }
-        DrawScreenPosition.X -= RenderPosition.X;
-        DrawScreenPosition.Y -= RenderPosition.Y;
-
-        TitleItem.RenderOpacity = CurrentWorldAlpha;
-        DetailsItem.RenderOpacity = CurrentWorldAlpha;
-        IconTemplate.RenderOpacity = CurrentWorldAlpha;
-        CircleTemplate.RenderOpacity = CurrentWorldAlpha;
-        CircleBorderTemplate.RenderOpacity = CurrentWorldAlpha;
-
-        float InWorldFlagScale = WorldRenderScale;
-        RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* InWorldFlagScale, CircleTemplate.GetHeight()* InWorldFlagScale);
-        RenderObj_TextureAt(CircleBorderTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleBorderTemplate.GetWidth()* InWorldFlagScale, CircleBorderTemplate.GetHeight()* InWorldFlagScale);
-
-        if (bDrawEdgeArrow)
-        {
-            DrawEdgeArrow(WorldPosition, PlayerViewPoint, PlayerViewRotation, DrawScreenPosition, CurrentWorldAlpha, WorldRenderScale);
-
-            FFormatNamedArguments Args;
-            FText NumberText = FText::AsNumber(int32(0.01f*Dist));
-            Args.Add("Dist", NumberText);
-
-            DetailsItem.Text = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "{Dist}m"), Args);
-            RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
-        }
-        else
-        {
-            auto* ViewTarget = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
-            auto* ViewPS = Cast<ATrialsPlayerState>(ViewTarget ? ViewTarget->PlayerState : UTPlayerOwner->PlayerState);
-            if (ViewPS == nullptr) return;
-
             if (ViewPS->ActiveObjectiveInfo == nullptr)
             {
                 TitleItem.Text = Target->ObjectiveInfo->Title;
@@ -260,8 +245,11 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
                 }
             }
         }
-        RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
+
     }
+
+    RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
+
     TitleItem.RenderOpacity = OldAlpha;
     DetailsItem.RenderOpacity = OldAlpha;
     IconTemplate.RenderOpacity = OldAlpha;

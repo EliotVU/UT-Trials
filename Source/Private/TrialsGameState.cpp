@@ -1,5 +1,6 @@
 #include "Trials.h"
 #include "TrialsGameState.h"
+#include "UnrealNetwork.h"
 
 ATrialsGameState::ATrialsGameState(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer)
@@ -28,4 +29,11 @@ bool ATrialsGameState::OnSameTeam(const AActor* Actor1, const AActor* Actor2)
     uint8 TeamNum1 = TeamInterface1->GetTeamNum();
     uint8 TeamNum2 = TeamInterface2->GetTeamNum();
     return TeamNum1 == TeamNum2;
+}
+
+void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ATrialsGameState, Objectives);
 }
