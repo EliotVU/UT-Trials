@@ -19,9 +19,6 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
-    UPROPERTY(VisibleInstanceOnly, Category = Record)
-    FString RecordId;
-
     /**
      * A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 
@@ -45,6 +42,13 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 
     /* Objectives that are held locked by this objective. */
     TArray<ATrialsObjectiveInfo*> LockedObjectives;
+
+    /**
+    * This represents the id that will be used when storing records remotely.
+    * You can modify this id by changing the actor's label.
+    */
+    UPROPERTY(VisibleInstanceOnly, Category = Record)
+    FString RecordId;
 
     /* Your local objective time record. */
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
@@ -111,6 +115,11 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
     UPROPERTY(BlueprintAssignable, Category = Objective)
     FObjectiveLockChange OnLockedChange;
+
+#ifdef WITH_EDITOR
+    void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+    void CheckForErrors() override;
+#endif
 
 protected:
     bool bLockedLocale;

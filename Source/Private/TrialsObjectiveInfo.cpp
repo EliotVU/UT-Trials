@@ -5,6 +5,8 @@
 #include "TrialsGameMode.h"
 #include "TrialsAPI.h"
 #include "UnrealNetwork.h"
+#include "UObjectToken.h"
+#include "MapErrors.h"
 
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -13,6 +15,32 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
     bAlwaysRelevant = true;
     NetPriority = 1.0;
 }
+
+#ifdef WITH_EDITOR
+void ATrialsObjectiveInfo::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+    if (GIsEditor && PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetName() == TEXT("ActorLabel"))
+    {
+        RecordId = GetActorLabel();
+        Modify();
+    }
+}
+
+FName RecordIdIsEmpty(TEXT("RecordIdIsEmpty"));
+
+void ATrialsObjectiveInfo::CheckForErrors()
+{
+    if (RecordId.IsEmpty())
+    {
+        FMessageLog("MapCheck").Warning()
+            ->AddToken(FUObjectToken::Create(this))
+            ->AddToken(FTextToken::Create(NSLOCTEXT("Trials", "TrialsObjectiveInfo", "RecordId is empty, please change the actor label to an appropiate objecive name!")))
+            ->AddToken(FMapErrorToken::Create(RecordIdIsEmpty));
+    }
+}
+
+#endif
 
 void ATrialsObjectiveInfo::BeginPlay()
 {
@@ -49,9 +77,15 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
 void ATrialsObjectiveInfo::UpdateRecordState(FString MapName)
 {
     // FIXME: Only available in development builds!
-    auto ObjName = RecordId.IsEmpty() ? GetActorLabel() : RecordId;
+    auto ObjName = RecordId;
     auto ObjTitle = Title;
     auto ObjDescription = Description;
+
+    if (ObjName.IsEmpty())
+    {
+        UE_LOG(UT, Error, TEXT("RecordId must be set to support records!"));
+        return;
+    }
 
     auto* API = GetAPI();
     API->GetObj(MapName, ObjName, [this](const FObjInfo& ObjInfo)
