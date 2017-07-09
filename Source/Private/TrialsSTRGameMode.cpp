@@ -6,6 +6,7 @@
 ATrialsSTRGameMode::ATrialsSTRGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
+    DisplayName = NSLOCTEXT("TrialsGameMode", "STR", "Solo Trials");
     MapPrefix = TEXT("STR");
     bWeaponStayActive = true;
 }
