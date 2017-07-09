@@ -82,14 +82,15 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
                 FPlayerObjectiveInfo UnlockedInfo;
                 ATrialsAPI::FromJSON(Data, &UnlockedInfo);
 
-                auto& MapObjs = Cast<ATrialsGameState>(GameState)->Objectives;
-                for (const auto& Target : MapObjs)
+                // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
+                auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Objectives;
+                for (const auto& Target : ObjTargets)
                 {
                     if (Target == nullptr) continue;
 
                     bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
                     {
-                        return Item.Title == Target->ObjectiveInfo->RecordId;
+                        return Item.Name == Target->ObjectiveInfo->RecordId;
                     });
                     if (IsCompleted)
                     {
