@@ -10,9 +10,10 @@ UUTHUDWidget_Objective::UUTHUDWidget_Objective(const FObjectInitializer& ObjectI
     ScreenPosition = FVector2D(0.5f, 0.0f);
     Size = FVector2D(0.f, 0.f);
     Origin = FVector2D(0.5f, 0.5f);
+
+    // CTF FlagStatus props
     InWorldAlpha = 0.8f;
     MaxIconScale = 0.75f;
-
     TopEdgePadding = 0.1f;
     BottomEdgePadding = 0.18f;
     LeftEdgePadding = 0.025f;
@@ -23,23 +24,6 @@ UUTHUDWidget_Objective::UUTHUDWidget_Objective(const FObjectInitializer& ObjectI
 
     static ConstructorHelpers::FObjectFinder<USoundBase> EndTickSoundFinder(TEXT("SoundWav'/Trials/CharFade.CharFade'"));
     EndTickSound = EndTickSoundFinder.Object;
-
-    StatusText.Font = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->MediumFont;
-    StatusText.bDrawShadow = true;
-    StatusText.ShadowDirection = FVector2D(1.f, 2.f);
-    StatusText.ShadowColor = FLinearColor::Black;
-
-    RecordText.Font = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->MediumFont;
-    RecordText.HorzPosition = ETextHorzPos::Right;
-    RecordText.bDrawShadow = true;
-    RecordText.ShadowDirection = FVector2D(1.f, 2.f);
-    RecordText.ShadowColor = FLinearColor::Black;
-
-    TimerText.Font = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->LargeFont;
-    TimerText.Position.Y = 32;
-    TimerText.bDrawShadow = true;
-    TimerText.ShadowDirection = FVector2D(1.f, 2.f);
-    TimerText.ShadowColor = FLinearColor::Black;
 }
 
 void UUTHUDWidget_Objective::InitializeWidget(AUTHUD* Hud)
@@ -73,6 +57,7 @@ void UUTHUDWidget_Objective::PostDraw(float RenderedTime)
 {
     Super::PostDraw(RenderedTime);
     ViewingCharacter = nullptr;
+    LastRenderedTarget = nullptr;
 }
 
 void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime)
@@ -85,6 +70,7 @@ void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector
         if (ViewPS->ActiveObjectiveInfo == nullptr || Target->ObjectiveInfo == ViewPS->ActiveObjectiveInfo)
         {
             DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, Target);
+            LastRenderedTarget = Target;
         }
     }
 }
@@ -97,12 +83,20 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
         auto* Target = ViewPS->ActiveObjectiveInfo;
         if (Target != nullptr)
         {
+            RenderObj_Texture(StatusBackground);
+
+            if (LastRenderedTarget != nullptr)
+            {
+                auto* Mat = Cast<UMaterialInterface>(Cast<UMaterialBillboardComponent>(LastRenderedTarget->GetComponentByClass(UMaterialBillboardComponent::StaticClass()))->GetMaterial(0));
+                DrawMaterial(Mat, StatusBackground.Position.X, StatusBackground.Position.Y, StatusBackground.GetHeight(), StatusBackground.GetHeight(), 0.0, 0.0, 1.0, 1.0, 1.0, StatusBackground.RenderColor);
+            }
+
             FText TitleText = Target->Title;
             StatusText.Text = TitleText;
             RenderObj_Text(StatusText);
 
             FText TimeText = ATrialsTimerState::FormatTime(Target->RecordTime);
-            RecordText.RenderColor = FLinearColor::Yellow;
+            RecordText.RenderColor = ATrialsTimerState::IdleColor;
             RecordText.Text = TimeText;
             RenderObj_Text(RecordText);
         }
@@ -116,7 +110,7 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
             float Timer = TimerState->GetRemainingTime();
 
             FLinearColor TimerColor = !IsActive
-                ? FLinearColor::Yellow
+                ? ATrialsTimerState::IdleColor
                 : ATrialsTimerState::GetTimerColor(Timer);
 
             FText TimeText = ATrialsTimerState::FormatTime(IsActive ? Timer : RecordTime);
@@ -159,8 +153,9 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
 void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjective* Target)
 {
     bScaleByDesignedResolution = false;
-    IconTemplate.RenderColor = FLinearColor::Yellow;
-    CameraIconTemplate.RenderColor = IconTemplate.RenderColor;
+    IconTemplate.RenderColor = Target->ObjectiveInfo && Target->ObjectiveInfo->IsLocked(UTPlayerOwner)
+        ? ATrialsTimerState::NegativeColor // Locked color?
+        : ATrialsTimerState::IdleColor; // Unlocked color?
 
     // Draw the flag / flag base in the world
     float WorldRenderScale = RenderScale * MaxIconScale;
@@ -200,18 +195,22 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
     CircleTemplate.RenderOpacity = CurrentWorldAlpha;
     CircleBorderTemplate.RenderOpacity = CurrentWorldAlpha;
 
-    float InWorldFlagScale = WorldRenderScale;
-    RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* InWorldFlagScale, CircleTemplate.GetHeight()* InWorldFlagScale);
-    RenderObj_TextureAt(CircleBorderTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleBorderTemplate.GetWidth()* InWorldFlagScale, CircleBorderTemplate.GetHeight()* InWorldFlagScale);
+    RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* WorldRenderScale, CircleTemplate.GetHeight()* WorldRenderScale);
+
+    RenderObj_TextureAt(CircleBorderTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleBorderTemplate.GetWidth()* WorldRenderScale, CircleBorderTemplate.GetHeight()* WorldRenderScale);
 
     if (bDrawEdgeArrow)
     {
         DrawEdgeArrow(WorldPosition, PlayerViewPoint, PlayerViewRotation, DrawScreenPosition, CurrentWorldAlpha, WorldRenderScale);
 
+        auto* Mat = Cast<UMaterialInterface>(Cast<UMaterialBillboardComponent>(Target->GetComponentByClass(UMaterialBillboardComponent::StaticClass()))->GetMaterial(0));
+        DrawMaterial(Mat, DrawScreenPosition.X - IconTemplate.GetWidth()*WorldRenderScale*0.5, DrawScreenPosition.Y- IconTemplate.GetHeight()*WorldRenderScale*0.5, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()*WorldRenderScale, 0.0, 0.0, 1.0, 1.0, CurrentWorldAlpha, IconTemplate.RenderColor);
+
         FFormatNamedArguments Args;
         FText NumberText = FText::AsNumber(int32(0.01f*Dist));
         Args.Add("Dist", NumberText);
 
+        DetailsItem.RenderColor = ATrialsTimerState::IdleColor;
         DetailsItem.Text = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "{Dist}m"), Args);
         RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
     }
@@ -236,7 +235,7 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
 
                     FLinearColor TimerColor = IsActive
                         ? ATrialsTimerState::GetTimerColor(Timer)
-                        : FLinearColor::Yellow;
+                        : ATrialsTimerState::IdleColor;
                     DetailsItem.RenderColor = TimerColor;
 
                     FText TimeText = ViewPS->FormatTime(IsActive ? Timer : RecordTime);
@@ -246,9 +245,9 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
             }
         }
 
+        RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
     }
 
-    RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
 
     TitleItem.RenderOpacity = OldAlpha;
     DetailsItem.RenderOpacity = OldAlpha;

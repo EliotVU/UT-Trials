@@ -31,9 +31,6 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
     FHUDRenderObject_Texture IconTemplate;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
-    FHUDRenderObject_Texture CameraIconTemplate;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
     FHUDRenderObject_Texture ArrowTemplate;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Message")
@@ -60,10 +57,16 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
     float RightEdgePadding;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
+    FHUDRenderObject_Texture StatusBackground;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
     FHUDRenderObject_Text StatusText;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
     FHUDRenderObject_Text RecordText;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
+    FHUDRenderObject_Texture TimerBackground;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
     FHUDRenderObject_Text TimerText;
@@ -72,6 +75,7 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 
     UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
     class AUTCharacter* ViewingCharacter;
+    class ATrialsObjective* LastRenderedTarget;
 
     void InitializeWidget(AUTHUD* Hud) override;
 

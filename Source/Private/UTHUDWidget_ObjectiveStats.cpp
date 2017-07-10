@@ -13,19 +13,9 @@ UUTHUDWidget_ObjectiveStats::UUTHUDWidget_ObjectiveStats(const FObjectInitialize
     Size = FVector2D(0.0f, 0.0f);
     Origin = FVector2D(1.0f, 0.0f);
 
-    PlayerTextItem.Font = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->SmallFont;
-    PlayerTextItem.bDrawShadow = true;
-    PlayerTextItem.ShadowDirection = FVector2D(1.f, 2.f);
-    PlayerTextItem.ShadowColor = FLinearColor::Black;
-    PlayerTextItem.RenderColor = FLinearColor::Gray;
     PlayerTextItem.HorzPosition = ETextHorzPos::Left;
-
-    TimeTextItem.Font = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->SmallFont;
-    TimeTextItem.bDrawShadow = true;
-    TimeTextItem.ShadowDirection = FVector2D(1.f, 2.f);
-    TimeTextItem.ShadowColor = FLinearColor::Black;
-    TimeTextItem.RenderColor = FLinearColor::Yellow;
     TimeTextItem.HorzPosition = ETextHorzPos::Right;
+    ItemPaddingY = 12.0;
 }
 
 void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
@@ -38,9 +28,12 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
     auto* Target = OwnerPS->ActiveObjectiveInfo;
     if (Target != nullptr)
     {
+        PlayerTextItem.RenderColor = FLinearColor::Gray;
+
         int32 i = 0;
         for (; i < Target->TopRecords.Num() && i < 3; ++i)
         {
+            TimeTextItem.RenderColor = i == 0 ? ATrialsTimerState::LeadColor : ATrialsTimerState::NegativeColor;
             DrawRecordItem(Target->TopRecords[i], i);
         }
 
@@ -49,26 +42,32 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
         {
             RecInfo.Value = Target->DevRecordTime;
             RecInfo.Player.Name = TEXT("Developer");
+            TimeTextItem.RenderColor = ATrialsTimerState::LeadColor;
             DrawRecordItem(RecInfo, 0);
         }
 
         RecInfo.Value = OwnerPS->ObjectiveRecordTime;
         RecInfo.Player.Name = OwnerPS->PlayerName;
-        DrawRecordItem(RecInfo, i + 1);
+        PlayerTextItem.RenderColor = FLinearColor::White;
+        TimeTextItem.RenderColor = ATrialsTimerState::IdleColor;
+        DrawRecordItem(RecInfo, static_cast<float>(i) + 0.5);
     }
 }
 
-void UUTHUDWidget_ObjectiveStats::DrawRecordItem(FRecordInfo& RecInfo, int32 Index)
+void UUTHUDWidget_ObjectiveStats::DrawRecordItem(FRecordInfo& RecInfo, float Index)
 {
-    float SizeY = 32 * 1.2f;
+    float SizeY = ItemBackgroundTemplate.GetHeight();
+    float Y = (SizeY + ItemPaddingY) * Index;
+
+    RenderObj_Texture(ItemBackgroundTemplate, FVector2D(0, Y));
 
     FText PlayerText = FText::FromString(RecInfo.Player.Name);
     PlayerTextItem.Text = PlayerText;
-    RenderObj_Text(PlayerTextItem, FVector2D(0, SizeY * Index));
+    RenderObj_Text(PlayerTextItem, FVector2D(0, Y));
 
     FText TimeText = RecInfo.Value != 0.0 ? ATrialsTimerState::FormatTime(RecInfo.Value) : FText::FromString(TEXT("N/A"));
     TimeTextItem.Text = TimeText;
-    RenderObj_Text(TimeTextItem, FVector2D(0, SizeY * Index));
+    RenderObj_Text(TimeTextItem, FVector2D(0, Y));
 }
 
 bool UUTHUDWidget_ObjectiveStats::ShouldDraw_Implementation(bool bShowScores)

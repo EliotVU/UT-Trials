@@ -55,6 +55,12 @@ class ATrialsTimerState : public AInfo
     UFUNCTION(BlueprintCallable, Category = HUD)
     static FLinearColor GetTimerColor(const float Timer);
 
+    static const FLinearColor LeadColor;
+    static const FLinearColor ActiveColor;
+    static const FLinearColor IdleColor;
+    static const FLinearColor PositiveColor;
+    static const FLinearColor NegativeColor;
+
     void Tick(float DeltaTime) override
     {
         Super::Tick(DeltaTime);

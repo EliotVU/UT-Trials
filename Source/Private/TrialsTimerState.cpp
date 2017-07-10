@@ -4,6 +4,12 @@
 #include "TrialsPlayerState.h"
 #include "UnrealNetwork.h"
 
+const FLinearColor ATrialsTimerState::LeadColor = FLinearColor(0.1, 0.8, 0.8);
+const FLinearColor ATrialsTimerState::ActiveColor = FLinearColor(0.9, 0.9, 0.0);
+const FLinearColor ATrialsTimerState::IdleColor = FLinearColor(0.8, 0.8, 0.0);
+const FLinearColor ATrialsTimerState::PositiveColor = FLinearColor(0.1, 0.8, 0.1);
+const FLinearColor ATrialsTimerState::NegativeColor = FLinearColor(0.8, 0.1, 0.1);
+
 ATrialsTimerState::ATrialsTimerState(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer
         .DoNotCreateDefaultSubobject(TEXT("Sprite")))
@@ -136,7 +142,7 @@ FText ATrialsTimerState::FormatTime(const float Value)
 FLinearColor ATrialsTimerState::GetTimerColor(const float Timer)
 {
     float Fade = FMath::Fmod(fabs(Timer), 1.0);
-    FLinearColor TimerColor = FLinearColor::LerpUsingHSV(Timer > 0.0 ? FLinearColor::Green : FLinearColor::Red, FLinearColor::White, 1.0 - Fade);
+    FLinearColor TimerColor = FLinearColor::LerpUsingHSV(Timer > 0.0 ? PositiveColor : NegativeColor, ActiveColor, 1.0 - Fade);
     return TimerColor;
 }
 
