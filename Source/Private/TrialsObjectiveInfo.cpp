@@ -22,7 +22,20 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 void ATrialsObjectiveInfo::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
-    if (GIsEditor && PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetName() == TEXT("ActorLabel"))
+    if (GetWorld()->WorldType == EWorldType::Editor)
+    {
+        if (PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetName() == TEXT("ActorLabel"))
+        {
+            RecordId = GetActorLabel();
+            Modify();
+        }
+    }
+}
+
+void ATrialsObjectiveInfo::PostRegisterAllComponents()
+{
+    Super::PostRegisterAllComponents();
+    if (GetWorld()->WorldType == EWorldType::Editor)
     {
         RecordId = GetActorLabel();
         Modify();

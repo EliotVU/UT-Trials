@@ -118,6 +118,7 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 
 #ifdef WITH_EDITOR
     void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+    void PostRegisterAllComponents() override;
     void CheckForErrors() override;
 #endif
 
