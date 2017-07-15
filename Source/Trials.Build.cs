@@ -16,6 +16,7 @@ namespace UnrealBuildTool.Rules
                     "InputCore",
                     "Slate",
                     "SlateCore",
+                    "WebBrowser",
                     "Http",
                     "Json",
                     "JsonUtilities"
