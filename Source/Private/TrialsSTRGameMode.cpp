@@ -47,3 +47,14 @@ bool ATrialsSTRGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Mom
     Super::ModifyDamage_Implementation(Damage, Momentum, Injured, InstigatedBy, HitInfo, DamageCauser, DamageType);
     return true;
 }
+
+bool ATrialsSTRGameMode::CheckRelevance_Implementation(AActor* Other)
+{
+    // Never allow any drops in STR games.
+    if (Other->IsA<AUTInventory>())
+    {
+        Cast<AUTInventory>(Other)->DroppedPickupClass = nullptr;
+        Cast<AUTInventory>(Other)->bAlwaysDropOnDeath = false;
+    }
+    return Super::CheckRelevance_Implementation(Other);
+}
