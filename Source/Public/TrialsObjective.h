@@ -4,7 +4,7 @@
 
 #include "TrialsObjective.generated.h"
 
-UCLASS(Abstract, Blueprintable)
+UCLASS(Abstract, Blueprintable, DisplayName = "Objective Target")
 class TRIALS_API ATrialsObjective : public AActor
 {
     GENERATED_UCLASS_BODY()
@@ -14,4 +14,7 @@ class TRIALS_API ATrialsObjective : public AActor
 
     void PostInitializeComponents() override;
     void Destroyed() override;
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCosmetic, Category = HUD)
+    UMaterialInterface* GetScreenIcon();
  };

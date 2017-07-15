@@ -80,29 +80,36 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
     auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
     if (ViewPS != nullptr)
     {
-        auto* Target = ViewPS->ActiveObjectiveInfo;
-        if (Target != nullptr)
+        auto* Obj = ViewPS->ActiveObjectiveInfo;
+        if (Obj != nullptr)
         {
             RenderObj_Texture(StatusBackground);
-
             if (LastRenderedTarget != nullptr)
             {
-                auto* Mat = Cast<UMaterialInterface>(Cast<UMaterialBillboardComponent>(LastRenderedTarget->GetComponentByClass(UMaterialBillboardComponent::StaticClass()))->GetMaterial(0));
-                DrawMaterial(Mat, StatusBackground.Position.X, StatusBackground.Position.Y, StatusBackground.GetHeight(), StatusBackground.GetHeight(), 0.0, 0.0, 1.0, 1.0, 1.0, StatusBackground.RenderColor);
+                auto* IconMat = LastRenderedTarget->GetScreenIcon();
+                if (IconMat)
+                {
+                    DrawMaterial(IconMat, 
+                        StatusBackground.Position.X, StatusBackground.Position.Y, 
+                        StatusBackground.GetHeight(), StatusBackground.GetHeight(),
+                        0.0, 0.0, 1.0, 1.0,
+                        StatusText.RenderOpacity, StatusText.RenderColor
+                    );
+                }
             }
 
-            FText TitleText = Target->Title;
+            FText TitleText = Obj->Title;
             StatusText.Text = TitleText;
             RenderObj_Text(StatusText);
 
-            FText TimeText = ATrialsTimerState::FormatTime(Target->RecordTime);
-            RecordText.RenderColor = ATrialsTimerState::IdleColor;
+            FText TimeText = ATrialsTimerState::FormatTime(Obj->RecordTime);
+            RecordText.RenderColor = ATrialsTimerState::LeadColor;
             RecordText.Text = TimeText;
             RenderObj_Text(RecordText);
         }
 
         auto* TimerState = ViewPS->TimerState;
-        if (Target != nullptr && TimerState != nullptr)
+        if (Obj != nullptr && TimerState != nullptr)
         {
             bool IsActive = TimerState->State == TS_Active;
 
@@ -203,9 +210,6 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
     {
         DrawEdgeArrow(WorldPosition, PlayerViewPoint, PlayerViewRotation, DrawScreenPosition, CurrentWorldAlpha, WorldRenderScale);
 
-        auto* Mat = Cast<UMaterialInterface>(Cast<UMaterialBillboardComponent>(Target->GetComponentByClass(UMaterialBillboardComponent::StaticClass()))->GetMaterial(0));
-        DrawMaterial(Mat, DrawScreenPosition.X - IconTemplate.GetWidth()*WorldRenderScale*0.5, DrawScreenPosition.Y- IconTemplate.GetHeight()*WorldRenderScale*0.5, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()*WorldRenderScale, 0.0, 0.0, 1.0, 1.0, CurrentWorldAlpha, IconTemplate.RenderColor);
-
         FFormatNamedArguments Args;
         FText NumberText = FText::AsNumber(int32(0.01f*Dist));
         Args.Add("Dist", NumberText);
@@ -247,7 +251,6 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
 
         RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
     }
-
 
     TitleItem.RenderOpacity = OldAlpha;
     DetailsItem.RenderOpacity = OldAlpha;
@@ -297,7 +300,7 @@ void UUTHUDWidget_Objective::DrawEdgeArrow(FVector InWorldPosition, FVector Play
 {
     ArrowTemplate.RenderScale = 1.1f * WorldRenderScale;
     ArrowTemplate.RenderOpacity = CurrentWorldAlpha;
-    ArrowTemplate.RenderColor = FColor::Yellow;
+    ArrowTemplate.RenderColor = IconTemplate.RenderColor;
     float RotYaw = FMath::Acos(PlayerViewRotation.Vector() | (InWorldPosition - PlayerViewPoint).GetSafeNormal()) * 180.f / PI;
     if (InDrawScreenPosition.X < 0.f)
     {

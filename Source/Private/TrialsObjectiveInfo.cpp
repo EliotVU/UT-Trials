@@ -12,6 +12,30 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
     SetReplicates(true);
     bAlwaysRelevant = true;
     NetPriority = 1.0;
+
+#if WITH_EDITORONLY_DATA
+    //auto* MySprite = GetSpriteComponent();
+    //if (MySprite)
+    //{
+    //    struct FConstructorStatics
+    //    {
+    //        ConstructorHelpers::FObjectFinderOptional<UTexture2D> TextureObject;
+    //        FName ID;
+    //        FText NAME;
+
+    //        FConstructorStatics()
+    //            : TextureObject(TEXT("/Game/RestrictedAssets/EditorAssets/Icons/generic_objective.generic_objective"))
+    //            , ID(TEXT("Objectives"))
+    //            , NAME(NSLOCTEXT("SpriteCategory", "Objectives", "Objectives"))
+    //        {
+    //        }
+    //    };
+    //    static FConstructorStatics ConstructorStatics;
+    //    MySprite->Sprite = ConstructorStatics.TextureObject.Get();
+    //    MySprite->SpriteInfo.Category = ConstructorStatics.ID;
+    //    MySprite->SpriteInfo.DisplayName = ConstructorStatics.NAME;
+    //}
+#endif // WITH_EDITORONLY_DATA
 }
 
 #ifdef WITH_EDITOR

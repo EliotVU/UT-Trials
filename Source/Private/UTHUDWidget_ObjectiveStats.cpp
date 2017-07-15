@@ -50,14 +50,14 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
         RecInfo.Player.Name = OwnerPS->PlayerName;
         PlayerTextItem.RenderColor = FLinearColor::White;
         TimeTextItem.RenderColor = ATrialsTimerState::IdleColor;
-        DrawRecordItem(RecInfo, static_cast<float>(i) + 0.5);
+        DrawRecordItem(RecInfo, static_cast<float>(i) + 1, ItemPaddingY);
     }
 }
 
-void UUTHUDWidget_ObjectiveStats::DrawRecordItem(FRecordInfo& RecInfo, float Index)
+void UUTHUDWidget_ObjectiveStats::DrawRecordItem(FRecordInfo& RecInfo, float Index, float MarginY)
 {
     float SizeY = ItemBackgroundTemplate.GetHeight();
-    float Y = (SizeY + ItemPaddingY) * Index;
+    float Y = (SizeY + ItemPaddingY) * Index + MarginY;
 
     RenderObj_Texture(ItemBackgroundTemplate, FVector2D(0, Y));
 

@@ -21,6 +21,6 @@ class TRIALS_API UUTHUDWidget_ObjectiveStats : public UUTHUDWidget
     float ItemPaddingY;
 
     void Draw_Implementation(float DeltaTime) override;
-    void DrawRecordItem(FRecordInfo& RecInfo, float Index);
+    void DrawRecordItem(FRecordInfo& RecInfo, float Index, float MarginY = 0.0);
     bool ShouldDraw_Implementation(bool bShowScores) override;
 };
