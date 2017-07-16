@@ -3,17 +3,17 @@
 
 ATrialsAPI::ATrialsAPI()
 {
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true;
 }
 
 void ATrialsAPI::BeginPlay()
 {
-	Super::BeginPlay();
+    Super::BeginPlay();
 }
 
 void ATrialsAPI::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+    Super::Tick(DeltaTime);
 }
 
 // API based on UTMcpUtils.h
@@ -43,7 +43,7 @@ void ATrialsAPI::SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunct
     HttpRequest->ProcessRequest();
 }
 
-void ATrialsAPI::OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool (const FHttpResponsePtr& HttpResponse)> OnComplete)
+void ATrialsAPI::OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool (const FHttpResponsePtr& HttpResponse)> OnComplete) const
 {
     if (HttpResponse.IsValid() && bSucceeded)
     {
@@ -81,6 +81,13 @@ TSharedRef<IHttpRequest> ATrialsAPI::Fetch(const FString Path, const FAPIOnResul
             return false;
         }
 
+        TSharedPtr<FJsonValue> Error = JsonObject->TryGetField(TEXT("error"));
+        if (Error.IsValid())
+        {
+            OnError(Error->AsString());
+            return false;
+        }
+
         OnSuccess(JsonObject);
         return true;
     });
@@ -107,32 +114,67 @@ TSharedRef<IHttpRequest> ATrialsAPI::Post(const FString Path, const FString Cont
             return false;
         }
 
+        TSharedPtr<FJsonValue> Error = JsonObject->TryGetField(TEXT("error"));
+        if (Error.IsValid())
+        {
+            OnError(Error->AsString());
+            return false;
+        }
+
         OnSuccess(JsonObject);
         return true;
     });
     return HttpRequest;
 }
 
-void ATrialsAPI::Authenticate(const FString& APIBaseURL, const FString& APIToken, const FString& ClientName, const FAuthenticate& OnResponse)
+void ATrialsAPI::Authenticate(const FString& APIBaseURL, const FString& APIToken, const FString& ClientName, const FAuthenticate& OnSuccess)
 {
-    UE_LOG(UT, Log, TEXT("Making an authentication request URL: %s token: %s"), *APIBaseURL, *APIToken);
+    UE_LOG(UT, Log, TEXT("Making an authentication request URL: %s token: ****"), *APIBaseURL);
 
     BaseURL = APIBaseURL;
     Fetch(TEXT("api/authenticate?token=") 
         + FGenericPlatformHttp::UrlEncode(APIToken) 
         + TEXT("&name=") + FGenericPlatformHttp::UrlEncode(ClientName),
-        [this, OnResponse](const FAPIResult& Data) {
+        [this, OnSuccess](const FAPIResult& Data) {
             AuthToken = Data->GetStringField("token");
-            OnResponse();
+
+
+            if (OnSuccess)
+                OnSuccess();
         }
     );
 }
 
-void ATrialsAPI::GetMap(const FString MapName, const FGetMap& OnResponse)
+void ATrialsAPI::LoginPlayer(const FString& UniqueId, const FString& Name, const FLoginPlayer& OnSuccess)
 {
-    Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("?create=1"), [this, OnResponse](const FAPIResult& Data) {
-        FMapInfo MapInfo;
-        FromJSON(Data, &MapInfo);
-        OnResponse(MapInfo);
+    checkSlow(!UniqueId.IsEmpty());
+
+    FLoginInfo LoginInfo;
+    LoginInfo.ProfileId = UniqueId;
+    LoginInfo.Name = Name;
+
+    Post(TEXT("api/players/login"), ToJSON(LoginInfo), [this, OnSuccess](const FAPIResult& Result) {
+        FPlayerInfo PlayerInfo;
+        FromJSON(Result, &PlayerInfo);
+
+        if (OnSuccess)
+            OnSuccess(PlayerInfo);
     });
+}
+
+void ATrialsAPI::GetMap(const FString MapName, const FGetMap& OnSuccess)
+{
+    checkSlow(!MapName.IsEmpty());
+
+    Fetch(TEXT("api/maps/") 
+        + FGenericPlatformHttp::UrlEncode(MapName) 
+        + TEXT("?create=1"), 
+        [this, OnSuccess](const FAPIResult& Data) {
+            FMapInfo MapInfo;
+            FromJSON(Data, &MapInfo);
+
+            if (OnSuccess)
+                OnSuccess(MapInfo);
+        }
+    );
 }

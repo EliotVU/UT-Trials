@@ -120,7 +120,7 @@ public:
     FClientInfo Client;
 
     FRecordInfo() {}
-    FRecordInfo(float Value, FString PlayerId) 
+    FRecordInfo(float Value, FString PlayerId): Flags(0)
     {
         this->Value = Value;
         this->Player._id = PlayerId;
@@ -172,10 +172,13 @@ public:
     void Tick(float DeltaTime) override;
 
     typedef TFunction<void()> FAuthenticate;
-    void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnResponse);
+    void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnSuccess);
+
+    typedef TFunction<void(FPlayerInfo& PlayerInfo)> FLoginPlayer;
+    void LoginPlayer(const FString& UniqueId, const FString& Name, const FLoginPlayer& OnSuccess = nullptr);
 
     typedef TFunction<void(FMapInfo& MapInfo)> FGetMap;
-    void GetMap(const FString MapName, const FGetMap& OnResponse);
+    void GetMap(const FString MapName, const FGetMap& OnSuccess);
 
     /*
     * Fetches data of an objective, including record time and a brief list of top records.
@@ -183,6 +186,9 @@ public:
     */
     void GetObj(const FString& MapName, const FString& ObjName, const TFunction<void(const FObjInfo& ObjInfo)> OnSuccess = nullptr)
     {
+        checkSlow(!MapName.IsEmpty());
+        checkSlow(!ObjName.IsEmpty());
+
         Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("/") + FGenericPlatformHttp::UrlEncode(ObjName) + TEXT("?create=1&limit=3"),
             [OnSuccess](const FAPIResult Result) {
             FObjInfo ObjInfo;
@@ -195,6 +201,9 @@ public:
 
     void SubmitRecord(const float Value, const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
     {
+        checkSlow(!ObjId.IsEmpty());
+        checkSlow(!PlayerId.IsEmpty());
+        
         FRecordInfo RecInfo(Value, PlayerId);
         Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), [OnSuccess](const FAPIResult Result) {
             FRecordInfo RecInfo;
@@ -243,5 +252,5 @@ public:
 private:
     TSharedRef<IHttpRequest> CreateRequest(const FString& Verb, const FString& Path) const;
     void SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunction<bool(const FHttpResponsePtr& HttpResponse)>& OnComplete);
-    void OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool(const FHttpResponsePtr& HttpResponse)> OnComplete);
+    void OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool(const FHttpResponsePtr& HttpResponse)> OnComplete) const;
 };
