@@ -31,8 +31,6 @@ void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, F
     // Authenticate this server.
     RecordsAPI = Cast<ATrialsAPI>(GetWorld()->SpawnActor(ATrialsAPI::StaticClass()));
     RecordsAPI->Authenticate(RecordsBaseURL, RecordsAPIToken, ServerNameOverride, [this, MapName]() {
-        UE_LOG(UT, Log, TEXT("Records API is Ready!"));
-        
         RecordsAPI->GetMap(MapName, [this](FMapInfo& MapInfo) {
             CurrentMapInfo = MapInfo;
             APIReady();
@@ -42,6 +40,7 @@ void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, F
 
 void ATrialsGameMode::APIReady()
 {
+    UE_LOG(UT, Log, TEXT("Records API is Ready!"));
     bAPIAuthenticated = true;
 
     for (TActorIterator<ATrialsObjectiveInfo> It(GetWorld()); It; ++It)
@@ -68,61 +67,107 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
         LoginInfo.ProfileId = PS->UniqueId->ToString();
         LoginInfo.Name = PS->PlayerName;
 
-        RecordsAPI->Post(TEXT("api/players/login"), ATrialsAPI::ToJSON(LoginInfo), [this, PS](const FAPIResult& Data) {
-            FPlayerInfo PlayerInfo;
-            ATrialsAPI::FromJSON(Data, &PlayerInfo);
-
-            PS->PlayerNetId = PlayerInfo._id;
-            UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *PlayerInfo.Name, *PlayerInfo.CountryCode);
-
+        RecordsAPI->LoginPlayer(PS->UniqueId->ToString(), PS->PlayerName, [this, PS](const FPlayerInfo& Result)
+        {
+            PS->PlayerNetId = Result._id;
+            UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *Result.Name, *Result.CountryCode);
 
             // localhost:8080/api/maps/STR-Temple/players/5944211eaeaaeccdf6f782de
-            RecordsAPI->Fetch(TEXT("api/maps/") + GetWorld()->GetMapName() + TEXT("/players/") + PS->PlayerNetId, [this, PS](const FAPIResult& Data)
-            {
-                FPlayerObjectiveInfo UnlockedInfo;
-                ATrialsAPI::FromJSON(Data, &UnlockedInfo);
-
-                // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
-                auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Objectives;
-                for (const auto& Target : ObjTargets)
+            RecordsAPI->Fetch(TEXT("api/maps/") 
+                + FGenericPlatformHttp::UrlEncode(GetWorld()->GetMapName()) 
+                + TEXT("/players/") 
+                + FGenericPlatformHttp::UrlEncode(PS->PlayerNetId), 
+                [this, PS](const FAPIResult& Data)
                 {
-                    if (Target == nullptr) continue;
+                    FPlayerObjectiveInfo UnlockedInfo;
+                    ATrialsAPI::FromJSON(Data, &UnlockedInfo);
 
-                    bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
+                    // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
+                    auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Objectives;
+                    for (const auto& Target : ObjTargets)
                     {
-                        return Item.Name == Target->ObjectiveInfo->RecordId;
-                    });
-                    if (IsCompleted)
-                    {
-                        PS->RegisterUnlockedObjective(Target->ObjectiveInfo);
+                        if (Target == nullptr) continue;
+
+                        bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
+                        {
+                            return Item.Name == Target->ObjectiveInfo->RecordId;
+                        });
+                        if (IsCompleted)
+                        {
+                            PS->RegisterUnlockedObjective(Target->ObjectiveInfo);
+                        }
                     }
-                }
-            });
+                });
         });
     }
 }
 
 void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
 {
+    auto* Char = Cast<ACharacter>(PlayerPawn);
+    if (Char)
+    {
+        Char->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+    }
     //PlayerPawn->bCanBeDamaged = false;
     Super::SetPlayerDefaults(PlayerPawn);
 }
 
 bool ATrialsGameMode::AllowSuicideBy(AUTPlayerController* PC)
 {
-    return PC->GetPawn() != nullptr && GetWorld()->TimeSeconds - PC->GetPawn()->CreationTime > 1.25f;
+    return PC->GetPawn() != nullptr && GetWorld()->TimeSeconds - PC->GetPawn()->CreationTime > 3.0f;
+}
+
+// Copied from Base, needed a playerstart finder that ignores geometry collision.
+AActor* ATrialsGameMode::ChoosePlayerStart_Implementation(AController* Player)
+{
+    // Choose a player start
+    APlayerStart* FoundPlayerStart = nullptr;
+    UClass* PawnClass = GetDefaultPawnClassForController(Player);
+    APawn* PawnToFit = PawnClass ? PawnClass->GetDefaultObject<APawn>() : nullptr;
+    TArray<APlayerStart*> StartPoints;
+    for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+    {
+        APlayerStart* PlayerStart = *It;
+        if (PlayerStart->IsA<APlayerStartPIE>())
+        {
+            // Always prefer the first "Play from Here" PlayerStart, if we find one while in PIE mode
+            FoundPlayerStart = PlayerStart;
+            break;
+        }
+
+        // Ignore our objective playerstarts, bIgnoreInNonTeamGame is always set to true on BeginPlay.
+        if (PlayerStart->IsA<AUTPlayerStart>() && Cast<AUTPlayerStart>(PlayerStart)->bIgnoreInNonTeamGame)
+        {
+            continue;
+        }
+
+        StartPoints.Add(PlayerStart);
+    }
+    if (FoundPlayerStart == nullptr)
+    {
+        if (StartPoints.Num() > 0)
+        {
+            FoundPlayerStart = StartPoints[FMath::RandRange(0, StartPoints.Num() - 1)];
+        }
+    }
+    return FoundPlayerStart;
 }
 
 AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
-    // TODO: If reached Hub once, give player a spawn with Tag "Hub".
-    auto* PS = Cast<ATrialsPlayerState>(Player->PlayerState);
+    const auto* PS = Cast<ATrialsPlayerState>(Player->PlayerState);
+
+    // Prefer HUB spawns(a PlayerStart with PlayerStartTag=HUB) if player has unlocked any objectives.
+    const FString& NewIncomingName = IncomingName.IsEmpty() && PS->UnlockedObjectives.Num() > 0 ? TEXT("HUB") : IncomingName;
+
     if (PS->ActiveObjectiveInfo != nullptr)
     {
         return PS->ActiveObjectiveInfo->GetPlayerSpawn(Player);
     }
     // Otherwise use any playerstart but those with a tag.
-    return Super::FindPlayerStart_Implementation(Player, TEXT(""));
+    return Super::FindPlayerStart_Implementation(Player, NewIncomingName);
 }
 
 // EXPLOIT: Don't drop any items, only discard.

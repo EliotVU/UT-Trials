@@ -26,7 +26,10 @@ class ATrialsGameMode : public AUTGameMode
     void PostLogin(APlayerController* NewPlayer) override;
     void SetPlayerDefaults(APawn* PlayerPawn) override;
     bool AllowSuicideBy(AUTPlayerController* PC) override;
+
+    AActor* ChoosePlayerStart_Implementation(AController* Player) override;
     AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
+
     void DiscardInventory(APawn* Other, AController* Killer) override;
 
     virtual void ScoreTrialObjective(ATrialsObjectiveInfo* objInfo, float Timer, AUTPlayerController* PC);
