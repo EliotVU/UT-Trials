@@ -9,6 +9,8 @@
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
+    bCanSubmitRecords = false;
+
     SetReplicates(true);
     bAlwaysRelevant = true;
     NetPriority = 1.0;
@@ -113,7 +115,7 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
     return GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
 }
 
-void ATrialsObjectiveInfo::UpdateRecordState(FString MapName)
+void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
 {
     // FIXME: Only available in development builds!
     auto ObjName = RecordId;
@@ -137,6 +139,8 @@ void ATrialsObjectiveInfo::UpdateRecordState(FString MapName)
 
         // TODO: Implement
         AvgRecordTime = ATrialsTimerState::RoundTime(Time);
+
+        bCanSubmitRecords = true;
     });
 }
 
@@ -150,14 +154,18 @@ void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
     auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
     ScorerPS->UpdateRecordTime(Record);
 
-    checkSlow(!ObjectiveNetId.IsEmpty())
-    checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
-
-    auto* API = GetAPI();
-    API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId, [this](const FRecordInfo& RecInfo)
+    if (bCanSubmitRecords)
     {
-        UpdateRecordState(GetWorld()->GetMapName());
-    });
+        checkSlow(!ObjectiveNetId.IsEmpty())
+        checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
+
+        auto* API = GetAPI();
+        API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId, [this](const FRecordInfo& RecInfo)
+        {
+            FString MapName = GetWorld()->GetMapName();
+            UpdateRecordState(MapName);
+        });
+    }
 }
 
 AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
@@ -168,16 +176,6 @@ AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
 void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
     if (PC == nullptr) return;
-
-    if (IsLocked(PC))
-    {
-        auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-        if (Char != nullptr)
-        {
-            Char->PlayerSuicide();
-        }
-        return;
-    }
 
     auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
     if (Char != nullptr)
@@ -207,9 +205,10 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    if (PS->ActiveObjectiveInfo != this) return;
 
     auto* TimerState = PS->TimerState;
-    if (TimerState == nullptr || TimerState->State != TS_Active || PS->ActiveObjectiveInfo != this)
+    if (TimerState == nullptr || TimerState->State != TS_Active)
     {
         return;
     }
@@ -230,39 +229,24 @@ void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActiv
 {
     if (PC == nullptr) return;
 
-    // EXPLOIT: Cleanup any projectile that were fired that may potentionally be exploited to boost themselves after restarting the objective.
-    // Handled in RestartPlayer
-    //for (TActorIterator<AUTProjectile> It(GetWorld()); It; ++It)
-    //{
-    //    if (It->InstigatorController == PC)
-    //    {
-    //        It->Destroy();
-    //    }
-    //}
-
-    // FIXME: Give player a new pawn at the same location instead?
-    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-    if (Char != nullptr)
-    {
-        // Handled here instead of GameMode, because it shouldn't be called on initial spawns.
-        auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
-        //Char->DiscardAllInventory();
-        //GameMode->GiveDefaultInventory(Char);
-
-        // FIXME: SetPlayerDefaults is stacking armor without this!
-        //Char->SetInitialHealth();
-        //Char->RemoveArmor(150);
-        //GameMode->SetPlayerDefaults(Char);
-
-        // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
-        Char->Reset();
-        PC->SetPawn(nullptr);
-        GameMode->RestartPlayer(PC);
-    }
-
     // Happens if an objective disables for a player with no set objective!
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (PS == nullptr || PS->ActiveObjectiveInfo == nullptr) return;
+
+    // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
+    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+    if (Char != nullptr)
+    {
+        FTransform Trans = Char->GetTransform();
+        auto Rot = PC->GetControlRotation();
+        Trans.SetRotation(FQuat(Rot));
+
+        auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
+        Char->Reset();
+        PC->SetPawn(nullptr);
+        GameMode->RestartPlayer(PC);
+        // GameMode->RestartPlayerAtTransform(PC, Trans);
+    }
 
     if (bDeActivate && PS->ActiveObjectiveInfo == this)
     {
@@ -326,4 +310,5 @@ void ATrialsObjectiveInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
     DOREPLIFETIME(ATrialsObjectiveInfo, TopRecords);
     DOREPLIFETIME(ATrialsObjectiveInfo, RecordTime);
     DOREPLIFETIME(ATrialsObjectiveInfo, AvgRecordTime);
+    DOREPLIFETIME(ATrialsObjectiveInfo, bCanSubmitRecords);
 }

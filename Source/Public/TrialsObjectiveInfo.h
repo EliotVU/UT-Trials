@@ -50,6 +50,8 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     UPROPERTY(VisibleInstanceOnly, Category = Record)
     FString RecordId;
 
+    FString ObjectiveNetId;
+
     /* Your local objective time record. */
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
     float DevRecordTime;
@@ -61,9 +63,10 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     float RecordTime;
 
     UPROPERTY(Replicated)
-    float AvgRecordTime; // set at runtime
+    float AvgRecordTime;
 
-    FString ObjectiveNetId;
+    UPROPERTY(Replicated)
+    bool bCanSubmitRecords;
 
     /**
      * Inventory to give to player when this objective activates.
@@ -75,7 +78,7 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 
     void BeginPlay() override;
 
-    void UpdateRecordState(FString MapId);
+    void UpdateRecordState(FString& MapName);
     void ScoreRecord(float Record, AUTPlayerController* PC);
 
     virtual AUTPlayerStart* GetPlayerSpawn(AController* Player);
