@@ -44,13 +44,14 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
             RecInfo.Player.Name = TEXT("Developer");
             TimeTextItem.RenderColor = ATrialsTimerState::LeadColor;
             DrawRecordItem(RecInfo, 0);
+            i = 1;
         }
 
         RecInfo.Value = OwnerPS->ObjectiveRecordTime;
-        RecInfo.Player.Name = OwnerPS->PlayerName;
+        RecInfo.Player.Name = ViewedPawn == UTCharacterOwner ? TEXT("You") : OwnerPS->PlayerName;
         PlayerTextItem.RenderColor = FLinearColor::White;
         TimeTextItem.RenderColor = ATrialsTimerState::IdleColor;
-        DrawRecordItem(RecInfo, static_cast<float>(i) + 1, ItemPaddingY);
+        DrawRecordItem(RecInfo, static_cast<float>(i), ItemPaddingY);
     }
 }
 
