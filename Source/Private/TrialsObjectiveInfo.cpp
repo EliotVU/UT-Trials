@@ -159,7 +159,9 @@ void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
 void ATrialsObjectiveInfo::ScoreRecord(float Time, AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
-    if (Time < RecordTime)
+
+    bool IsTopRecord = Time < RecordTime;
+    if (IsTopRecord)
     {
         RecordGhostData = TPC->RecordingGhostData;
         RecordTime = Time;
@@ -167,6 +169,7 @@ void ATrialsObjectiveInfo::ScoreRecord(float Time, AUTPlayerController* PC)
 
     auto* ScorerPS = Cast<ATrialsPlayerState>(TPC->PlayerState);
     ScorerPS->UpdateRecordTime(Time);
+    OnRecordScored.Broadcast(TPC, Time, IsTopRecord);
 
     auto* DataObject = TPC->RecordingGhostData;
     TPC->RecordedGhostData = DataObject;

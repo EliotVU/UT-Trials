@@ -5,6 +5,7 @@
 
 #include "TrialsObjectiveInfo.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRecordScored, AUTPlayerController*, PC, float, Time, bool, IsTopRecord);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerController*, PC);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveLockChange, bool, IsLocked);
 
@@ -29,10 +30,6 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     /* An optional description for the objective. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
     FText Description;
-
-    /* A PlayerStart for those who have died during this objective. */
-    UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
-    AUTPlayerStart* PlayerStart;
 
     /**
      * If set, objective will be locked if set objective is not unlocked (on a player basis).
@@ -68,10 +65,6 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     UPROPERTY(Replicated)
     bool bCanSubmitRecords;
 
-    // Current top record's ghost data.
-    UPROPERTY()
-    class UUTGhostData* RecordGhostData;
-
     /**
      * Inventory to give to player when this objective activates.
      * 
@@ -84,6 +77,12 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 
     void UpdateRecordState(FString& MapName);
     void ScoreRecord(float Record, AUTPlayerController* PC);
+
+    /**
+     * Broadcasts when a player has set a new/improved personal or top record.
+     */
+    UPROPERTY(BlueprintAssignable, Category = Record, BlueprintAuthorityOnly)
+    FRecordScored OnRecordScored;
 
     virtual AUTPlayerStart* GetPlayerSpawn(AController* Player);
 
@@ -108,7 +107,7 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     virtual void DisableObjective(APlayerController* PC, bool bDeActivate = false);
 
     /* Fired when this objective has been completed. Fired by CompleteObjective()*/
-    UPROPERTY(BlueprintAssignable, Category = Objective)
+    UPROPERTY(BlueprintAssignable, Category = Objective, BlueprintAuthorityOnly)
     FObjectiveComplete OnObjectiveComplete;
 
     UFUNCTION()
@@ -132,7 +131,14 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
 protected:
     bool bLockedLocale;
 
-private:
     ATrialsAPI* GetAPI() const;
+
+    /* A PlayerStart for those who have died during this objective. */
+    UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
+    AUTPlayerStart* PlayerStart;
+
+    // Current top record's ghost data.
+    UPROPERTY()
+    class UUTGhostData* RecordGhostData;
 };
 
