@@ -94,6 +94,8 @@ float ATrialsTimerState::StopTimer()
 
 float ATrialsTimerState::EndTimer()
 {
+    // Temp state hack.
+    State = TS_Idle;
     EndRecordTime = GetRecordTime();
 
     State = TS_Complete;

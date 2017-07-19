@@ -8,7 +8,7 @@
 #include "TrialsPlayerController.h"
 #include "TrialsGhostSerializer.h"
 
-ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
+ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
     bCanSubmitRecords = false;
@@ -47,7 +47,7 @@ ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& Objec
 #include "UObjectToken.h"
 #include "MapErrors.h"
 
-void ATrialsObjectiveInfo::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void ATrialsObjective::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
     if (GetWorld()->WorldType == EWorldType::Editor)
@@ -60,7 +60,7 @@ void ATrialsObjectiveInfo::PostEditChangeProperty(FPropertyChangedEvent& Propert
     }
 }
 
-void ATrialsObjectiveInfo::PostRegisterAllComponents()
+void ATrialsObjective::PostRegisterAllComponents()
 {
     Super::PostRegisterAllComponents();
     if (GetWorld()->WorldType == EWorldType::Editor)
@@ -72,20 +72,20 @@ void ATrialsObjectiveInfo::PostRegisterAllComponents()
 
 FName RecordIdIsEmpty(TEXT("RecordIdIsEmpty"));
 
-void ATrialsObjectiveInfo::CheckForErrors()
+void ATrialsObjective::CheckForErrors()
 {
     if (RecordId.IsEmpty())
     {
         FMessageLog("MapCheck").Warning()
             ->AddToken(FUObjectToken::Create(this))
-            ->AddToken(FTextToken::Create(NSLOCTEXT("Trials", "TrialsObjectiveInfo", "RecordId is empty, please change the actor label to an appropiate objecive name!")))
+            ->AddToken(FTextToken::Create(NSLOCTEXT("Trials", "TrialsObjective", "RecordId is empty, please change the actor label to an appropiate objecive name!")))
             ->AddToken(FMapErrorToken::Create(RecordIdIsEmpty));
     }
 }
 
 #endif
 
-void ATrialsObjectiveInfo::BeginPlay()
+void ATrialsObjective::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -105,19 +105,19 @@ void ATrialsObjectiveInfo::BeginPlay()
     {
         if (Role == ROLE_Authority)
         {
-            RequisiteObjective->OnObjectiveComplete.AddDynamic(this, &ATrialsObjectiveInfo::OnRequisiteCompleted);
+            RequisiteObjective->OnObjectiveComplete.AddDynamic(this, &ATrialsObjective::OnRequisiteCompleted);
             RequisiteObjective->LockedObjectives.Add(this);
         }
         SetLocked(true);
     }
 }
 
-ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
+ATrialsAPI* ATrialsObjective::GetAPI() const
 {
     return GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
 }
 
-void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
+void ATrialsObjective::UpdateRecordState(FString& MapName)
 {
     auto ObjName = RecordId;
     auto ObjTitle = Title;
@@ -156,7 +156,7 @@ void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
     });
 }
 
-void ATrialsObjectiveInfo::ScoreRecord(float Time, AUTPlayerController* PC)
+void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
 
@@ -196,12 +196,12 @@ void ATrialsObjectiveInfo::ScoreRecord(float Time, AUTPlayerController* PC)
     }
 }
 
-AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
+AUTPlayerStart* ATrialsObjective::GetPlayerSpawn(AController* Player)
 {
     return this->PlayerStart;
 }
 
-void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
+void ATrialsObjective::ActivateObjective(APlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr) return;
@@ -219,7 +219,7 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
         }
     }
 
-    if (PS->ActiveObjectiveInfo != this)
+    if (PS->ActiveObjective != this)
     {
         TPC->StopGhostPlayback(false);
 
@@ -231,7 +231,7 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
     TPC->FetchObjectiveGhostData(this, [this, TPC, PS](UUTGhostData* GhostData)
     {
         // Let's ensure that we don't playback a ghost if player de-activated this objective during this download.
-        if (PS->ActiveObjectiveInfo && PS->ActiveObjectiveInfo != this)
+        if (PS->ActiveObjective && PS->ActiveObjective != this)
         {
             return;
         }
@@ -245,14 +245,14 @@ void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
     PS->StartObjective();
 }
 
-void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
+void ATrialsObjective::CompleteObjective(AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr) return;
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS->ActiveObjectiveInfo != this) return;
+    if (PS->ActiveObjective != this) return;
 
     auto* TimerState = PS->TimerState;
     if (TimerState == nullptr || TimerState->State != TS_Active)
@@ -274,14 +274,14 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     }
 }
 
-void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
+void ATrialsObjective::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr) return;
 
     // Happens if an objective disables for a player with no set objective!
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS->ActiveObjectiveInfo == this)
+    if (PS->ActiveObjective == this)
     {
         TPC->StopRecordingGhostData();
         TPC->RecordingGhostData = nullptr;
@@ -310,31 +310,31 @@ void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActiv
             PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
         }
     }
-    else if (PS->ActiveObjectiveInfo == nullptr)
+    else if (PS->ActiveObjective == nullptr)
     {
         return;
     }
     PS->EndObjective();
 }
 
-bool ATrialsObjectiveInfo::IsEnabled(APlayerController* PC)
+bool ATrialsObjective::IsEnabled(APlayerController* PC)
 {
     if (PC == nullptr) return false;
 
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return PS && PS->ActiveObjectiveInfo == this;
+    return PS && PS->ActiveObjective == this;
 }
 
-bool ATrialsObjectiveInfo::IsActive(APlayerController* PC)
+bool ATrialsObjective::IsActive(APlayerController* PC)
 {
     if (PC == nullptr) return false;
 
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    return PS && PS->ActiveObjectiveInfo == this 
+    return PS && PS->ActiveObjective == this 
         && PS->TimerState && PS->TimerState->State == TS_Active;
 }
 
-void ATrialsObjectiveInfo::OnRequisiteCompleted(AUTPlayerController* PC)
+void ATrialsObjective::OnRequisiteCompleted(AUTPlayerController* PC)
 {
     if (PC == nullptr)
         return;
@@ -343,7 +343,7 @@ void ATrialsObjectiveInfo::OnRequisiteCompleted(AUTPlayerController* PC)
     ScorerPS->RegisterUnlockedObjective(this);
 }
 
-bool ATrialsObjectiveInfo::IsLocked(APlayerController* PC)
+bool ATrialsObjective::IsLocked(APlayerController* PC)
 {
     if (Role == ROLE_Authority)
     {
@@ -358,18 +358,18 @@ bool ATrialsObjectiveInfo::IsLocked(APlayerController* PC)
     return bLockedLocale;
 }
 
-void ATrialsObjectiveInfo::SetLocked(bool bIsLocked)
+void ATrialsObjective::SetLocked(bool bIsLocked)
 {
     bLockedLocale = bIsLocked;
     OnLockedChange.Broadcast(bLockedLocale);
 }
 
-void ATrialsObjectiveInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void ATrialsObjective::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(ATrialsObjectiveInfo, TopRecords);
-    DOREPLIFETIME(ATrialsObjectiveInfo, RecordTime);
-    DOREPLIFETIME(ATrialsObjectiveInfo, AvgRecordTime);
-    DOREPLIFETIME(ATrialsObjectiveInfo, bCanSubmitRecords);
+    DOREPLIFETIME(ATrialsObjective, TopRecords);
+    DOREPLIFETIME(ATrialsObjective, RecordTime);
+    DOREPLIFETIME(ATrialsObjective, AvgRecordTime);
+    DOREPLIFETIME(ATrialsObjective, bCanSubmitRecords);
 }

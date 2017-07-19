@@ -10,18 +10,17 @@ class ATrialsGameState : public AUTGameState
 {
     GENERATED_UCLASS_BODY()
 
-    // TODO: Refactor to Objective Targets and add a separate Objectives array pointing to ObjectiveInfos'
     UPROPERTY(Replicated, BlueprintReadOnly, Category = Trials, DisplayName = "Objective Targets")
-    TArray<ATrialsObjective*> Objectives;
+    TArray<ATrialsObjectiveTarget*> Targets;
 
-    void AddTarget(ATrialsObjective* Obj)
+    void AddTarget(ATrialsObjectiveTarget* Obj)
     {
-        Objectives.AddUnique(Obj);
+        Targets.AddUnique(Obj);
     }
 
-    void RemoveTarget(ATrialsObjective* Obj)
+    void RemoveTarget(ATrialsObjectiveTarget* Obj)
     {
-        Objectives.Remove(Obj);
+        Targets.Remove(Obj);
     }
 
     bool AllowMinimapFor(AUTPlayerState* PS) override;

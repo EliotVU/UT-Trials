@@ -3,12 +3,12 @@
 
 #include "TrialsObjective.h"
 
-ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
+ATrialsObjectiveTarget::ATrialsObjectiveTarget(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
 }
 
-void ATrialsObjective::PostInitializeComponents()
+void ATrialsObjectiveTarget::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
     if (Role == ROLE_Authority)
@@ -21,7 +21,7 @@ void ATrialsObjective::PostInitializeComponents()
     }
 }
 
-void ATrialsObjective::Destroyed()
+void ATrialsObjectiveTarget::Destroyed()
 {
     auto* GS = GetWorld()->GetGameState<ATrialsGameState>();
     if (GS != nullptr)

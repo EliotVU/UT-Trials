@@ -13,7 +13,7 @@ class ATrialsPlayerState : public AUTPlayerState
     FString PlayerNetId;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
-    ATrialsObjectiveInfo* ActiveObjectiveInfo;
+    ATrialsObjective* ActiveObjective;
 
     UPROPERTY(Replicated, BlueprintReadOnly)
     ATrialsTimerState* TimerState;
@@ -24,16 +24,15 @@ class ATrialsPlayerState : public AUTPlayerState
 
     /**
      * List of objective instances that have been unlocked in the current map. Objectives that were never locked are not included!
-     * TODO: Fetch unlocked objectives from API.
      */
     UPROPERTY(ReplicatedUsing = OnRep_UnlockedObjectives, BlueprintReadOnly)
-    TArray<ATrialsObjectiveInfo*> UnlockedObjectives;
+    TArray<ATrialsObjective*> UnlockedObjectives;
 
-    void RegisterUnlockedObjective(ATrialsObjectiveInfo* Objective);
+    void RegisterUnlockedObjective(ATrialsObjective* Objective);
 
     float StartObjective() const;
     float EndObjective() const;
-    void SetObjective(ATrialsObjectiveInfo* Obj);
+    void SetObjective(ATrialsObjective* Obj);
 
     void UpdateRecordTime(float Time);
 

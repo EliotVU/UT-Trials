@@ -60,5 +60,5 @@ public:
     void SummonGhostPlayback(class UUTGhostData* GhostData);
     void StopGhostPlayback(bool bDeActivate);
 
-    void FetchObjectiveGhostData(ATrialsObjectiveInfo* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
+    void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
 };

@@ -27,7 +27,7 @@ void ATrialsPlayerController::ServerSuicide_Implementation()
     // Try to perform an instant re-spawn with no death events and gore.
     auto* PS = Cast<ATrialsPlayerState>(PlayerState);
     auto* Char = Cast<AUTCharacter>(GetCharacter());
-    if (Char != nullptr && PS->ActiveObjectiveInfo != nullptr && !GetWorld()->GetAuthGameMode<AUTGameMode>()->AllowSuicideBy(this))
+    if (Char != nullptr && PS->ActiveObjective != nullptr && !GetWorld()->GetAuthGameMode<AUTGameMode>()->AllowSuicideBy(this))
     {
         // Minor anti-spam limitation.
         if (GetWorld()->TimeSeconds - Char->CreationTime < 0.2f)
@@ -108,7 +108,7 @@ void ATrialsPlayerController::StopGhostPlayback(bool bDeActivate)
     }
 }
 
-void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjectiveInfo* Objective, const TFunction<void(UUTGhostData* GhostData)> OnResult)
+void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(UUTGhostData* GhostData)> OnResult)
 {
     check(Objective);
 

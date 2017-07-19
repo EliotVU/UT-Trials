@@ -25,7 +25,7 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
     auto* OwnerPS = ViewPS ? ViewPS : Cast<ATrialsPlayerState>(UTPlayerOwner->UTPlayerState);
     if (OwnerPS == nullptr) return;
 
-    auto* Target = OwnerPS->ActiveObjectiveInfo;
+    auto* Target = OwnerPS->ActiveObjective;
     if (Target != nullptr)
     {
         PlayerTextItem.RenderColor = FLinearColor::Gray;

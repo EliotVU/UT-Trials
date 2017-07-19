@@ -65,9 +65,9 @@ void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector
     auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
     if (ViewPS == nullptr) return;
 
-    for (auto& Target : GameState->Objectives)
+    for (auto& Target : GameState->Targets)
     {
-        if (ViewPS->ActiveObjectiveInfo == nullptr || Target->ObjectiveInfo == ViewPS->ActiveObjectiveInfo)
+        if (ViewPS->ActiveObjective == nullptr || Target->Objective == ViewPS->ActiveObjective)
         {
             DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, Target);
             LastRenderedTarget = Target;
@@ -80,7 +80,7 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
     auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
     if (ViewPS != nullptr)
     {
-        auto* Obj = ViewPS->ActiveObjectiveInfo;
+        auto* Obj = ViewPS->ActiveObjective;
         if (Obj != nullptr)
         {
             RenderObj_Texture(StatusBackground);
@@ -157,10 +157,10 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
     }
 }
 
-void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjective* Target)
+void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjectiveTarget* Target)
 {
     bScaleByDesignedResolution = false;
-    IconTemplate.RenderColor = Target->ObjectiveInfo && Target->ObjectiveInfo->IsLocked(UTPlayerOwner)
+    IconTemplate.RenderColor = Target->Objective && Target->Objective->IsLocked(UTPlayerOwner)
         ? ATrialsTimerState::NegativeColor // Locked color?
         : ATrialsTimerState::IdleColor; // Unlocked color?
 
@@ -223,12 +223,12 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
         auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
         if (ViewPS != nullptr)
         {
-            if (ViewPS->ActiveObjectiveInfo == nullptr)
+            if (ViewPS->ActiveObjective == nullptr)
             {
-                TitleItem.Text = Target->ObjectiveInfo->Title;
+                TitleItem.Text = Target->Objective->Title;
                 RenderObj_Text(TitleItem, FVector2D(DrawScreenPosition));
             }
-            else if (ViewPS->ActiveObjectiveInfo == Target->ObjectiveInfo)
+            else if (ViewPS->ActiveObjective == Target->Objective)
             {
                 auto* TimerState = ViewPS->TimerState;
                 if (TimerState != nullptr)

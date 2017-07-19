@@ -16,7 +16,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveLockChange, bool, IsLocked
  * - along with a BP_Trials_Objective_Shield to activate the objective.
  */
 UCLASS(DisplayName = "Trials Objective")
-class TRIALS_API ATrialsObjectiveInfo : public AInfo
+class TRIALS_API ATrialsObjective : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
@@ -35,10 +35,10 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
      * If set, objective will be locked if set objective is not unlocked (on a player basis).
      */
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Objective)
-    ATrialsObjectiveInfo* RequisiteObjective;
+    ATrialsObjective* RequisiteObjective;
 
     /* Objectives that are held locked by this objective. */
-    TArray<ATrialsObjectiveInfo*> LockedObjectives;
+    TArray<ATrialsObjective*> LockedObjectives;
 
     /**
     * This represents the id that will be used when storing records remotely.

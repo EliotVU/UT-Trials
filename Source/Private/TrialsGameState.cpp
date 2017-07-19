@@ -35,5 +35,5 @@ void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-    DOREPLIFETIME(ATrialsGameState, Objectives);
+    DOREPLIFETIME(ATrialsGameState, Targets);
 }

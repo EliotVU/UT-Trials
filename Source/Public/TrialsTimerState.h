@@ -18,7 +18,7 @@ class ATrialsTimerState : public AInfo
     GENERATED_UCLASS_BODY()
 
     UPROPERTY(Replicated, BlueprintReadOnly)
-    ATrialsObjectiveInfo* Objective;
+    ATrialsObjective* Objective;
 
     UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly)
     TEnumAsByte<enum ETimerState> State;

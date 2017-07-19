@@ -30,7 +30,7 @@ FText UTrialsObjectiveSetMessage::GetText(int32 Switch, bool bTargetsPlayerState
 
 void UTrialsObjectiveSetMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
 {
-    auto* ObjInfo = Cast<ATrialsObjectiveInfo>(OptionalObject);
+    auto* ObjInfo = Cast<ATrialsObjective>(OptionalObject);
     Args.Add("Player1Name", FText::FromString(bTargetsPlayerState1 ? "You" : RelatedPlayerState_1->PlayerName));
     Args.Add("Title", ObjInfo->Title);
 }

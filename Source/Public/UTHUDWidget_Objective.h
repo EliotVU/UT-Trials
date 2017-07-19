@@ -4,7 +4,7 @@
 #include "UTHUDWidget_Objective.generated.h"
 
 class ATrialsGameState;
-class ATrialsObjective;
+class ATrialsObjectiveTarget;
 
 UCLASS()
 class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
@@ -75,7 +75,7 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 
     UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
     class AUTCharacter* ViewingCharacter;
-    class ATrialsObjective* LastRenderedTarget;
+    class ATrialsObjectiveTarget* LastRenderedTarget;
 
     void InitializeWidget(AUTHUD* Hud) override;
 
@@ -91,7 +91,7 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 protected:
     virtual void DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime);
     virtual void DrawStatus(float DeltaTime);
-    virtual void DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjective* Obj);
+    virtual void DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjectiveTarget* Obj);
     FVector GetAdjustedScreenPosition(const FVector& WorldPosition, const FVector& ViewPoint, const FVector& ViewDir, float Dist, float IconSize, bool& bDrawEdgeArrow);
     void DrawEdgeArrow(FVector InWorldPosition, FVector PlayerViewPoint, FRotator PlayerViewRotation, FVector InDrawScreenPosition, float CurrentWorldAlpha, float WorldRenderScale);
 

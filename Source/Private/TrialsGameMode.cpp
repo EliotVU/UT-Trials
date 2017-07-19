@@ -43,7 +43,7 @@ void ATrialsGameMode::APIReady()
     UE_LOG(UT, Log, TEXT("Records API is Ready!"));
     bAPIAuthenticated = true;
 
-    for (TActorIterator<ATrialsObjectiveInfo> It(GetWorld()); It; ++It)
+    for (TActorIterator<ATrialsObjective> It(GetWorld()); It; ++It)
     {
         It->UpdateRecordState(CurrentMapInfo.Name);
     }
@@ -83,18 +83,18 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
                     ATrialsAPI::FromJSON(Data, &UnlockedInfo);
 
                     // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
-                    auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Objectives;
+                    auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Targets;
                     for (const auto& Target : ObjTargets)
                     {
                         if (Target == nullptr) continue;
 
                         bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
                         {
-                            return Item.Name == Target->ObjectiveInfo->RecordId;
+                            return Item.Name == Target->Objective->RecordId;
                         });
                         if (IsCompleted)
                         {
-                            PS->RegisterUnlockedObjective(Target->ObjectiveInfo);
+                            PS->RegisterUnlockedObjective(Target->Objective);
                         }
                     }
                 });
@@ -162,9 +162,9 @@ AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, con
     // Prefer HUB spawns(a PlayerStart with PlayerStartTag=HUB) if player has unlocked any objectives.
     const FString& NewIncomingName = IncomingName.IsEmpty() && PS->UnlockedObjectives.Num() > 0 ? TEXT("HUB") : IncomingName;
 
-    if (PS->ActiveObjectiveInfo != nullptr)
+    if (PS->ActiveObjective != nullptr)
     {
-        return PS->ActiveObjectiveInfo->GetPlayerSpawn(Player);
+        return PS->ActiveObjective->GetPlayerSpawn(Player);
     }
     // Otherwise use any playerstart but those with a tag.
     return Super::FindPlayerStart_Implementation(Player, NewIncomingName);
@@ -181,7 +181,7 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
     }
 }
 
-void ATrialsGameMode::ScoreTrialObjective(ATrialsObjectiveInfo* Obj, float Timer, AUTPlayerController* PC)
+void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* PC)
 {
     check(Obj);
     check(PC);

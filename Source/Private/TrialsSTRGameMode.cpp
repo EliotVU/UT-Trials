@@ -18,7 +18,7 @@ void ATrialsSTRGameMode::FinishRestartPlayer(AController* NewPlayer, const FRota
     Super::FinishRestartPlayer(NewPlayer, StartRotation);
     // We end the objective on spawn over death, so that an objective can still be completed by projectiles during a player's death.
     auto* PS = Cast<ATrialsPlayerState>(NewPlayer->PlayerState);
-    if (PS && PS->ActiveObjectiveInfo != nullptr)
+    if (PS && PS->ActiveObjective != nullptr)
     {
         PS->EndObjective();
     }
