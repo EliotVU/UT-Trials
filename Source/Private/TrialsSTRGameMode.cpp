@@ -9,6 +9,8 @@ ATrialsSTRGameMode::ATrialsSTRGameMode(const FObjectInitializer& ObjectInitializ
     DisplayName = NSLOCTEXT("TrialsGameMode", "STR", "Solo Trials");
     MapPrefix = TEXT("STR");
     bWeaponStayActive = true;
+    bDelayedStart = false;
+    StartDelay = 3.0;
 }
 
 void ATrialsSTRGameMode::FinishRestartPlayer(AController* NewPlayer, const FRotator& StartRotation)
@@ -38,11 +40,6 @@ bool ATrialsSTRGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Mom
         // Remove team boosting.
         Momentum = FVector::ZeroVector;
         Damage = 0; // Although weapons shoot through team mates, radius damage could still be dealt to team mates.
-        AUTPlayerController* InstigatorPC = Cast<AUTPlayerController>(InstigatedBy);
-        if (InstigatorPC && Cast<AUTPlayerState>(Injured->PlayerState))
-        {
-            static_cast<AUTPlayerState*>(Injured->PlayerState)->AnnounceSameTeam(InstigatorPC);
-        }
     }
     Super::ModifyDamage_Implementation(Damage, Momentum, Injured, InstigatedBy, HitInfo, DamageCauser, DamageType);
     return true;
