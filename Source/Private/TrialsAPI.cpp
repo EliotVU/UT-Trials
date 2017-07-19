@@ -1,4 +1,5 @@
 #include "Trials.h"
+
 #include "TrialsAPI.h"
 
 ATrialsAPI::ATrialsAPI()
@@ -25,6 +26,8 @@ TSharedRef<IHttpRequest> ATrialsAPI::CreateRequest(const FString& Verb, const FS
     TSharedRef<IHttpRequest> HttpRequest = FHttpModule::Get().CreateRequest();
     HttpRequest->SetURL(BaseURL + Path);
     HttpRequest->SetVerb(Verb);
+    HttpRequest->SetHeader(TEXT("User-Agent"), "X-UnrealEngine-Agent");
+    HttpRequest->SetHeader("Content-Type", TEXT("application/json"));
     return HttpRequest;
 }
 
@@ -38,8 +41,6 @@ void ATrialsAPI::SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunct
     {
         HttpRequest->SetHeader("Auth-Token", AuthToken);
     }
-    HttpRequest->SetHeader(TEXT("User-Agent"), "X-UnrealEngine-Agent");
-    HttpRequest->SetHeader("Content-Type", TEXT("application/json"));
     HttpRequest->ProcessRequest();
 }
 
@@ -47,18 +48,19 @@ void ATrialsAPI::OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr
 {
     if (HttpResponse.IsValid() && bSucceeded)
     {
-        UE_LOG(UT, Log, TEXT("Received response from request %s with %s"), *HttpRequest->GetURL(), *HttpResponse->GetContentAsString());
+        UE_LOG(UT, Log, TEXT("-- Received response from request %s with %s"), *HttpRequest->GetURL(), *HttpResponse->GetContentAsString());
         if (OnComplete(HttpResponse))
         {
+            UE_LOG(UT, Log, TEXT("--- > Request successful!"));
         }
         else
         {
-            UE_LOG(UT, Error, TEXT("Request response, denied!."));
+            UE_LOG(UT, Error, TEXT("--- > Request response is invalid."));
         }
     }
     else
     {
-        UE_LOG(UT, Warning, TEXT("Request failed. No response from %s"), *HttpRequest->GetURL());
+        UE_LOG(UT, Error, TEXT("-- Request failed. No response from %s"), *HttpRequest->GetURL());
         OnComplete(FHttpResponsePtr());
     }
 }

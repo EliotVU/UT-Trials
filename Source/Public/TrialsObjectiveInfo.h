@@ -68,6 +68,10 @@ class TRIALS_API ATrialsObjectiveInfo : public AInfo
     UPROPERTY(Replicated)
     bool bCanSubmitRecords;
 
+    // Current top record's ghost data.
+    UPROPERTY()
+    class UUTGhostData* RecordGhostData;
+
     /**
      * Inventory to give to player when this objective activates.
      * 

@@ -5,6 +5,8 @@
 #include "TrialsGameMode.h"
 #include "TrialsAPI.h"
 #include "UnrealNetwork.h"
+#include "TrialsPlayerController.h"
+#include "TrialsGhostSerializer.h"
 
 ATrialsObjectiveInfo::ATrialsObjectiveInfo(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -117,7 +119,6 @@ ATrialsAPI* ATrialsObjectiveInfo::GetAPI() const
 
 void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
 {
-    // FIXME: Only available in development builds!
     auto ObjName = RecordId;
     auto ObjTitle = Title;
     auto ObjDescription = Description;
@@ -129,11 +130,12 @@ void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
     }
 
     auto* API = GetAPI();
-    API->GetObj(MapName, ObjName, [this](const FObjInfo& ObjInfo)
+    API->GetObj(MapName, ObjName, [this, API](const FObjInfo& ObjInfo)
     {
         ObjectiveNetId = ObjInfo._id;
         TopRecords = ObjInfo.Records;
 
+        float OldTime = RecordTime;
         float Time = ObjInfo.RecordTime > 0.f ? ObjInfo.RecordTime : DevRecordTime;
         RecordTime = ATrialsTimerState::RoundTime(Time);
 
@@ -141,18 +143,34 @@ void ATrialsObjectiveInfo::UpdateRecordState(FString& MapName)
         AvgRecordTime = ATrialsTimerState::RoundTime(Time);
 
         bCanSubmitRecords = true;
+
+        // Try get ghost data
+        bool bTimeChanged = Time != OldTime;
+        if (TopRecords.Num() > 0 && bTimeChanged)
+        {
+            API->DownloadGhost(ObjectiveNetId, TopRecords[0].Player._id, [this](TArray<uint8> Data)
+            {
+                RecordGhostData = GhostDataSerializer::Serialize(Data);
+            });
+        }
     });
 }
 
-void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
+void ATrialsObjectiveInfo::ScoreRecord(float Time, AUTPlayerController* PC)
 {
-    if (Record < RecordTime)
+    auto* TPC = Cast<ATrialsPlayerController>(PC);
+    if (Time < RecordTime)
     {
-        RecordTime = Record;
+        RecordGhostData = TPC->RecordingGhostData;
+        RecordTime = Time;
     }
 
-    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    ScorerPS->UpdateRecordTime(Record);
+    auto* ScorerPS = Cast<ATrialsPlayerState>(TPC->PlayerState);
+    ScorerPS->UpdateRecordTime(Time);
+
+    auto* DataObject = TPC->RecordingGhostData;
+    TPC->RecordedGhostData = DataObject;
+    TPC->RecordingGhostData = nullptr;
 
     if (bCanSubmitRecords)
     {
@@ -160,8 +178,15 @@ void ATrialsObjectiveInfo::ScoreRecord(float Record, AUTPlayerController* PC)
         checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
 
         auto* API = GetAPI();
-        API->SubmitRecord(Record, ObjectiveNetId, ScorerPS->PlayerNetId, [this](const FRecordInfo& RecInfo)
+        API->SubmitRecord(Time, ObjectiveNetId, ScorerPS->PlayerNetId, [this, DataObject, API, Time, ScorerPS](const FRecordInfo& RecInfo)
         {
+            // Just incase if the server records were not in sync with the database, so that we don't end overwriting our remotely stored ghost.
+            if (DataObject != nullptr && Time <= ATrialsTimerState::RoundTime(RecInfo.Value))
+            {
+                TArray<uint8> ObjectBytes = GhostDataSerializer::Serialize(DataObject);
+                API->SubmitGhost(ObjectBytes, ObjectiveNetId, ScorerPS->PlayerNetId);
+            }
+
             FString MapName = GetWorld()->GetMapName();
             UpdateRecordState(MapName);
         });
@@ -175,33 +200,52 @@ AUTPlayerStart* ATrialsObjectiveInfo::GetPlayerSpawn(AController* Player)
 
 void ATrialsObjectiveInfo::ActivateObjective(APlayerController* PC)
 {
-    if (PC == nullptr) return;
+    auto* TPC = Cast<ATrialsPlayerController>(PC);
+    if (TPC == nullptr) return;
 
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-    if (Char != nullptr)
+    if (Char == nullptr) return;
+
+    for (auto i = 0; i < PlayerInventory.Num(); ++i)
     {
-        for (auto i = 0; i < PlayerInventory.Num(); ++i)
+        auto* Inv = Char->CreateInventory(PlayerInventory[i]);
+        if (Inv != nullptr)
         {
-            auto* Inv = Char->CreateInventory(PlayerInventory[i]);
-            if (Inv != nullptr)
-            {
-                Char->AddInventory(Inv, false);
-            }
+            Char->AddInventory(Inv, false);
         }
     }
 
-    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (PS->ActiveObjectiveInfo != this)
     {
+        TPC->StopGhostPlayback(false);
+
         PS->SetObjective(this);
         PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 0, PS, nullptr, this);
     }
+
+    TPC->StartRecordingGhostData();
+    TPC->FetchObjectiveGhostData(this, [this, TPC, PS](UUTGhostData* GhostData)
+    {
+        // Let's ensure that we don't playback a ghost if player de-activated this objective during this download.
+        if (PS->ActiveObjectiveInfo && PS->ActiveObjectiveInfo != this)
+        {
+            return;
+        }
+
+        GhostData = GhostData != nullptr ? GhostData : RecordGhostData;
+        if (GhostData != nullptr)
+        {
+            TPC->SummonGhostPlayback(GhostData);
+        }
+    });
     PS->StartObjective();
 }
 
 void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 {
-    if (PC == nullptr) return;
+    auto* TPC = Cast<ATrialsPlayerController>(PC);
+    if (TPC == nullptr) return;
 
     // We don't want to complete an objective for clients whom have already completed or are doing a different objective.
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
@@ -216,6 +260,8 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)
     {
+        TPC->StopRecordingGhostData();
+
         PS->RegisterUnlockedObjective(this);
         // Note: End before events
         float Timer = PS->EndObjective();
@@ -227,31 +273,43 @@ void ATrialsObjectiveInfo::CompleteObjective(AUTPlayerController* PC)
 
 void ATrialsObjectiveInfo::DisableObjective(APlayerController* PC, bool bDeActivate /*= false*/)
 {
-    if (PC == nullptr) return;
+    auto* TPC = Cast<ATrialsPlayerController>(PC);
+    if (TPC == nullptr) return;
 
     // Happens if an objective disables for a player with no set objective!
     auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS == nullptr || PS->ActiveObjectiveInfo == nullptr) return;
-
-    // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
-    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-    if (Char != nullptr)
+    if (PS->ActiveObjectiveInfo == this)
     {
-        FTransform Trans = Char->GetTransform();
-        auto Rot = PC->GetControlRotation();
-        Trans.SetRotation(FQuat(Rot));
+        TPC->StopRecordingGhostData();
+        TPC->RecordingGhostData = nullptr;
 
-        auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
-        Char->Reset();
-        PC->SetPawn(nullptr);
-        GameMode->RestartPlayer(PC);
-        // GameMode->RestartPlayerAtTransform(PC, Trans);
+        TPC->StopGhostPlayback(!bDeActivate);
+        TPC->RecordedGhostData = nullptr;
+
+        // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
+        auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+        if (Char != nullptr)
+        {
+            FTransform Trans = Char->GetTransform();
+            auto Rot = PC->GetControlRotation();
+            Trans.SetRotation(FQuat(Rot));
+
+            auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
+            Char->Reset();
+            PC->SetPawn(nullptr);
+            GameMode->RestartPlayer(PC);
+            // GameMode->RestartPlayerAtTransform(PC, Trans);
+        }
+
+        if (bDeActivate)
+        {
+            PS->SetObjective(nullptr);
+            PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
+        }
     }
-
-    if (bDeActivate && PS->ActiveObjectiveInfo == this)
+    else if (PS->ActiveObjectiveInfo == nullptr)
     {
-        PS->SetObjective(nullptr);
-        PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
+        return;
     }
     PS->EndObjective();
 }

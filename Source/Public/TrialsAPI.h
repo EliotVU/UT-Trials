@@ -189,14 +189,19 @@ public:
         checkSlow(!MapName.IsEmpty());
         checkSlow(!ObjName.IsEmpty());
 
-        Fetch(TEXT("api/maps/") + FGenericPlatformHttp::UrlEncode(MapName) + TEXT("/") + FGenericPlatformHttp::UrlEncode(ObjName) + TEXT("?create=1&limit=3"),
+        Fetch(TEXT("api/maps/") 
+            + FGenericPlatformHttp::UrlEncode(MapName) 
+            + TEXT("/") 
+            + FGenericPlatformHttp::UrlEncode(ObjName) 
+            + TEXT("?create=1&limit=3"),
             [OnSuccess](const FAPIResult Result) {
-            FObjInfo ObjInfo;
-            FromJSON(Result, &ObjInfo);
+                FObjInfo ObjInfo;
+                FromJSON(Result, &ObjInfo);
 
-            if (OnSuccess)
-                OnSuccess(ObjInfo);
-        });
+                if (OnSuccess)
+                    OnSuccess(ObjInfo);
+            }
+        );
     }
 
     void SubmitRecord(const float Value, const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
@@ -205,12 +210,71 @@ public:
         checkSlow(!PlayerId.IsEmpty());
         
         FRecordInfo RecInfo(Value, PlayerId);
-        Post(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), [OnSuccess](const FAPIResult Result) {
-            FRecordInfo RecInfo;
-            FromJSON(Result, &RecInfo);
+        Post(TEXT("api/recs/") 
+            + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), 
+            [OnSuccess](const FAPIResult Result) {
+                FRecordInfo RecInfo;
+                FromJSON(Result, &RecInfo);
 
-            if (OnSuccess)
-                OnSuccess(RecInfo);
+                if (OnSuccess)
+                    OnSuccess(RecInfo);
+            }
+        );
+    }
+
+    void SubmitGhost(TArray<uint8> data, const FString& ObjId, const FString& PlayerId)
+    {
+        checkSlow(!ObjId.IsEmpty());
+        checkSlow(!PlayerId.IsEmpty());
+
+        auto HttpRequest = CreateRequest(TEXT("POST"),
+            TEXT("api/recs/ghost/")
+            + FGenericPlatformHttp::UrlEncode(ObjId)
+            + TEXT("/")
+            + FGenericPlatformHttp::UrlEncode(PlayerId)
+        );
+
+        HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
+        HttpRequest->SetContent(data);
+        SendRequest(HttpRequest, [this](const FHttpResponsePtr& HttpResponse) -> bool {
+            if (!HttpResponse.IsValid())
+            {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+
+    void DownloadGhost(const FString& ObjId, const FString& PlayerId, const TFunction<void(TArray<uint8> data)> OnSuccess, const TFunction<void()> OnError = nullptr)
+    {
+        checkSlow(!ObjId.IsEmpty());
+        checkSlow(!PlayerId.IsEmpty());
+
+        auto HttpRequest = CreateRequest(TEXT("GET"), 
+            TEXT("api/recs/ghost/") 
+            + FGenericPlatformHttp::UrlEncode(ObjId)
+            + TEXT("/")
+            + FGenericPlatformHttp::UrlEncode(PlayerId)
+        );
+
+        HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
+        SendRequest(HttpRequest, [this, OnError, OnSuccess](const FHttpResponsePtr& HttpResponse) -> bool {
+            if (!HttpResponse.IsValid())
+            {
+                if (OnError) OnError();
+                return false;
+            }
+
+            if (HttpResponse->GetContentType() != TEXT("application/octet-stream"))
+            {
+                if (OnError) OnError();
+                return false;
+            }
+
+            OnSuccess(HttpResponse->GetContent());
+            return true;
         });
     }
 
