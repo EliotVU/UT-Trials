@@ -286,7 +286,7 @@ void ATrialsObjective::DisableObjective(APlayerController* PC, bool bDeActivate 
         TPC->StopRecordingGhostData();
         TPC->RecordingGhostData = nullptr;
 
-        TPC->StopGhostPlayback(!bDeActivate);
+        TPC->StopGhostPlayback(false);
         TPC->RecordedGhostData = nullptr;
 
         // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.

@@ -57,8 +57,16 @@ public:
     void StartRecordingGhostData();
     void StopRecordingGhostData();
 
+    void ViewGhostPlayback(class UUTGhostData* GhostData);
+    void OnEndGhostPlayback();
     void SummonGhostPlayback(class UUTGhostData* GhostData);
     void StopGhostPlayback(bool bDeActivate);
 
     void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
+
+    void SetScoreObjectiveState();
+
+private:
+    FTimerHandle ViewGhostPlaybackTimerHandle;
+
 };

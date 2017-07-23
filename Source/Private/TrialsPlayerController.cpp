@@ -35,7 +35,7 @@ void ATrialsPlayerController::ServerSuicide_Implementation()
             return;
         }
 
-        Char->SpawnRallyEffectAt(Char->GetActorLocation());
+        Char->SpawnRallyDestinationEffectAt(Char->GetActorLocation());
         Char->Reset();
         SetPawn(nullptr);
         this->ServerRestartPlayer();
@@ -43,7 +43,7 @@ void ATrialsPlayerController::ServerSuicide_Implementation()
         auto* NewChar = Cast<AUTCharacter>(GetCharacter());
         if (NewChar)
         {
-            Char->SpawnRallyDestinationEffectAt(Char->GetActorLocation());
+            Char->SpawnRallyDestinationEffectAt(NewChar->GetActorLocation());
         }
         return;
     }
@@ -74,6 +74,32 @@ void ATrialsPlayerController::StopRecordingGhostData()
     }
 
     Char->GhostComponent->GhostStopRecording();
+}
+
+void ATrialsPlayerController::ViewGhostPlayback(UUTGhostData* GhostData)
+{
+    SummonGhostPlayback(GhostData);
+    check(GhostPlayback);
+
+    if (GhostPlayback->Ghost != nullptr)
+    {
+        SetViewTarget(GhostPlayback->Ghost);
+
+        GhostPlayback->Ghost->GhostComponent->GhostStopPlaying();
+        GhostPlayback->Ghost->GhostComponent->GhostStartPlaying();
+        GhostPlayback->Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsPlayerController::OnEndGhostPlayback);
+
+        // TODO: on player respawn, do a ghost cleanup. 
+    }
+}
+
+void ATrialsPlayerController::OnEndGhostPlayback()
+{
+    if (GhostPlayback != nullptr)
+    {
+        GhostPlayback->Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsPlayerController::OnEndGhostPlayback);
+        GhostPlayback->Destroy();
+    }
 }
 
 void ATrialsPlayerController::SummonGhostPlayback(UUTGhostData* GhostData)
@@ -132,4 +158,63 @@ void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objectiv
             OnResult(nullptr);
         }
     );
+}
+
+void ATrialsPlayerController::SetScoreObjectiveState()
+{
+    static FName NAME_CamMode(TEXT("FreeCam"));
+    SetCameraMode(NAME_CamMode);
+
+    auto* UTC = Cast<AUTCharacter>(GetCharacter());
+    if (UTC != nullptr)
+    {
+        PawnPendingDestroy(UTC);
+        UnPossess();
+        SetViewTarget(UTC);
+
+        UTC->GetCharacterMovement()->StopMovementImmediately();
+        UTC->GetCharacterMovement()->DisableMovement();
+
+        if (!UTC->IsDead())
+        {            
+            //PlayTaunt();
+            UTC->DisallowWeaponFiring(true);
+
+            UTC->PlayAnimMontage(UTC->CurrentTaunt);
+
+            UTC->bTriggerRallyEffect = true;
+            UTC->OnTriggerRallyEffect();
+        }
+    }
+
+    auto* GhostData = RecordingGhostData;
+    FTimerDelegate TimerCallback;
+    TimerCallback.BindLambda([this, GhostData, UTC]() -> void
+    {
+        if (UTC != nullptr)
+        {
+            UTC->SpawnRallyDestinationEffectAt(UTC->GetActorLocation());
+            UTC->Destroy();
+        }
+
+        auto* Char = GetCharacter();
+        if (Char != nullptr && UTC != Char)
+        {
+            return;
+        }
+
+        // Was GhostData GC'd?
+        if (GhostData == nullptr)
+        {
+            return;
+        }
+        ViewGhostPlayback(GhostData);
+    });
+
+    if (GetWorldTimerManager().IsTimerActive(ViewGhostPlaybackTimerHandle))
+    {
+        GetWorldTimerManager().SetTimer(ViewGhostPlaybackTimerHandle, 0.0, false);
+        UE_LOG(UT, Warning, TEXT("ViewGhostPlaybackTimerHandle is already running!!!"));
+    }
+    GetWorldTimerManager().SetTimer(ViewGhostPlaybackTimerHandle, TimerCallback, 2.0, false);
 }

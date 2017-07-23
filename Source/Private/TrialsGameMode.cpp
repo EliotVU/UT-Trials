@@ -184,7 +184,9 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
 void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* PC)
 {
     check(Obj);
-    check(PC);
+    auto* TPC = Cast<ATrialsPlayerController>(PC);
+    check(TPC);
+    TPC->SetScoreObjectiveState(); // note: don't call after ScoreRecord!
 
     auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
 
