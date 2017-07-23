@@ -10,6 +10,8 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
     // Re-usage
     if (Ghost != nullptr)
     {
+        Ghost->GhostComponent->GhostData = GhostData;
+
         OnRePlayFinished();
         return;
     }
@@ -30,10 +32,10 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
         Ghost->SpawnDefaultController();
         Ghost->GhostComponent->GhostData = GhostData;
 
-        Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
         Ghost->GhostComponent->GhostMoveToStart();
         Ghost->GhostComponent->GhostStartPlaying();
         Ghost->GhostComponent->GhostStopPlaying();
+        Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
     }
 }
 
@@ -64,6 +66,11 @@ void ATrialsGhostReplay::Destroyed()
         Ghost->GhostComponent->GhostData = nullptr;
         Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
         Ghost->GhostComponent->GhostStopPlaying();
+
+        if (Ghost->Controller)
+        {
+            Ghost->Controller->PawnPendingDestroy(Ghost);
+        }
         Ghost->Destroy();
     }
     Super::Destroyed();
