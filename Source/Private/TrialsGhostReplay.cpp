@@ -1,7 +1,14 @@
 ﻿#include "Trials.h"
 
-#include "TrialsGhostReplay.h"
 #include "UTGhostComponent.h"
+#include "TrialsGhostReplay.h"
+#include "TrialsGameMode.h"
+
+ATrialsGhostReplay::ATrialsGhostReplay(const FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer
+        .DoNotCreateDefaultSubobject(TEXT("Sprite")))
+{
+}
 
 void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
 {
@@ -20,13 +27,7 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
     SpawnInfo.Owner = GetOwner();
     SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    UClass* GhostCharClass = LoadClass<AUTCharacter>(GetTransientPackage(), TEXT("/Trials/Blueprints/BP_Trials_GhostCharacter.BP_Trials_GhostCharacter_C"));
-    if (GhostCharClass == nullptr)
-    {
-        GhostCharClass = GetWorld()->GetAuthGameMode()->DefaultPawnClass.Get();
-    }
-
-    Ghost = GetWorld()->SpawnActor<AUTCharacter>(GhostCharClass, SpawnInfo);
+    Ghost = GetWorld()->SpawnActor<AUTCharacter>(GetWorld()->GetAuthGameMode<ATrialsGameMode>()->GhostClass, SpawnInfo);
     if (Ghost != nullptr)
     {
         Ghost->SpawnDefaultController();

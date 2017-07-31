@@ -23,11 +23,22 @@ ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
 
     ImpactHammerObject = FStringAssetReference(TEXT("/Trials/Weapons/BP_Trials_ImpactHammer.BP_Trials_ImpactHammer_C"));
     bClearPlayerInventory = true;
+
+    GhostObject = FStringAssetReference(TEXT("/Trials/Blueprints/BP_Trials_GhostCharacter.BP_Trials_GhostCharacter_C"));
 }
 
 void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
     Super::InitGame(MapName, Options, ErrorMessage);
+
+    if (!GhostObject.IsNull())
+    {
+        GhostClass = Cast<UClass>(StaticLoadObject(UClass::StaticClass(), nullptr, *GhostObject.ToStringReference().ToString(), nullptr, LOAD_NoWarn));
+    }
+    else
+    {
+        GhostClass = GetWorld()->GetAuthGameMode()->DefaultPawnClass.Get();
+    }
 
     // Authenticate this server.
     RecordsAPI = Cast<ATrialsAPI>(GetWorld()->SpawnActor(ATrialsAPI::StaticClass()));

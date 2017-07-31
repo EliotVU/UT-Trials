@@ -14,6 +14,11 @@ class ATrialsGameMode : public AUTGameMode
 {
     GENERATED_UCLASS_BODY()
 
+    TAssetSubclassOf<AUTCharacter> GhostObject;
+
+    UPROPERTY()
+    TSubclassOf<AUTCharacter> GhostClass;
+
     ATrialsAPI* RecordsAPI;
 
     UPROPERTY(Config)

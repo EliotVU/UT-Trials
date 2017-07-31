@@ -7,7 +7,7 @@
 UCLASS()
 class ATrialsGhostReplay : public AInfo
 {
-    GENERATED_BODY()
+    GENERATED_UCLASS_BODY()
 
 public:
     UPROPERTY()
