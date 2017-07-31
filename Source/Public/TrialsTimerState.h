@@ -65,14 +65,14 @@ class ATrialsTimerState : public AInfo
     {
         Super::Tick(DeltaTime);
 
-        // GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Net %s"), *UEnum::GetValueAsString(TEXT("Engine.ENetMode"), GetWorld()->GetNetMode())));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("State %s"), *UEnum::GetValueAsString(TEXT("Trials.ETimerState"), State)));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Rec %f"), GetRecordTime()));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("End Rec %f"), EndRecordTime));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("TIMER %f"), GetTimer()));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("REM %f"), GetRemainingTime()));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Start %f"), StartTime));
-        GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("End %f"), EndTime));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Net %s"), *UEnum::GetValueAsString(TEXT("Engine.ENetMode"), GetWorld()->GetNetMode())));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("State %s"), *UEnum::GetValueAsString(TEXT("Trials.ETimerState"), State)));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Rec %f"), GetRecordTime()));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("End Rec %f"), EndRecordTime));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("TIMER %f"), GetTimer()));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("REM %f"), GetRemainingTime()));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("Start %f"), StartTime));
+        //GEngine->AddOnScreenDebugMessage(-1, 0, FColor::White, FString::Printf(TEXT("End %f"), EndTime));
     }
 
     void GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const override;

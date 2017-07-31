@@ -6,6 +6,7 @@
 #include "TrialsHUD.h"
 #include "TrialsObjectiveCompleteMessage.h"
 #include "TrialsAPI.h"
+#include "TrialsRecordSetMessage.h"
 
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -229,4 +230,6 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
 
     bool bIsTopRecord = RecordSwitch == 0;
     OnObjectiveRecordSet.Broadcast(Obj, Player, Timer, RecordTime - Timer, bIsTopRecord);
+
+    BroadcastLocalized(this, UTrialsRecordSetMessage::StaticClass(), RecordSwitch, PlayerState, nullptr, PlayerState->TimerState);
 }
