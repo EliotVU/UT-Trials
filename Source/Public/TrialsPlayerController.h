@@ -29,10 +29,22 @@ public:
     UPROPERTY()
     class UUTGhostData* RecordingGhostData;
 
+    // Temporary reference to the player's ghost data of last scored scored objective run.
+    UPROPERTY()
+    class UUTGhostData* ScoredGhostData;
+
+    void SetupInputComponent() override;
     void Destroyed() override;
     void OnRep_PlayerState() override;
 
     void ServerSuicide_Implementation() override;
+    void ServerRestartPlayer_Implementation() override;
+
+    UFUNCTION(Exec)
+    virtual void RequestRestart();
+
+    UFUNCTION(Server, Reliable, WithValidation)
+    virtual void ServerRequestRestart();
 
     UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = UI)
     void OpenRecordsMenu(const FString& MapName, const FString& ObjName)
@@ -64,7 +76,7 @@ public:
 
     void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
 
-    void SetScoreObjectiveState();
+    void ScoredObjective(ATrialsObjective* Objective);
 
 private:
     FTimerHandle ViewGhostPlaybackTimerHandle;

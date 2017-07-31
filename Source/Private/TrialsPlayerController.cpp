@@ -6,6 +6,12 @@
 #include "TrialsGhostSerializer.h"
 #include "UTGhostComponent.h"
 
+void ATrialsPlayerController::SetupInputComponent()
+{
+    Super::SetupInputComponent();
+    InputComponent->BindAction("RequestRally", IE_Pressed, this, &ATrialsPlayerController::RequestRestart);
+}
+
 void ATrialsPlayerController::Destroyed()
 {
     if (GhostPlayback)
@@ -51,6 +57,46 @@ void ATrialsPlayerController::ServerSuicide_Implementation()
     Super::ServerSuicide_Implementation();
 }
 
+void ATrialsPlayerController::ServerRestartPlayer_Implementation()
+{
+    StopGhostPlayback(false);
+    Super::ServerRestartPlayer_Implementation();
+}
+
+void ATrialsPlayerController::RequestRestart()
+{
+    if (UTPlayerState)
+    {
+        ServerRequestRestart();
+    }
+}
+
+bool ATrialsPlayerController::ServerRequestRestart_Validate()
+{
+    return true;
+}
+
+void ATrialsPlayerController::ServerRequestRestart_Implementation()
+{
+    if (UTPlayerState->IsOnlySpectator())
+    {
+        return;
+    }
+
+    if (GetCharacter() == nullptr && ScoredGhostData != nullptr)
+    {
+        if (UTPlayerState->bIsSpectator)
+        {
+            EndSpectatingState();
+        }
+
+        ViewGhostPlayback(ScoredGhostData);
+        ScoredGhostData = nullptr;
+        return;
+    }
+    ServerSuicide();
+}
+
 void ATrialsPlayerController::StartRecordingGhostData()
 {
     RecordingGhostData = nullptr;
@@ -80,6 +126,11 @@ void ATrialsPlayerController::ViewGhostPlayback(UUTGhostData* GhostData)
 {
     SummonGhostPlayback(GhostData);
     check(GhostPlayback);
+
+    bPlayerIsWaiting = true;
+    BeginSpectatingState();
+
+    ClientSetCameraFade(true, FColor::Yellow);
 
     if (GhostPlayback->Ghost != nullptr)
     {
@@ -160,8 +211,10 @@ void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objectiv
     );
 }
 
-void ATrialsPlayerController::SetScoreObjectiveState()
+void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
 {
+    ScoredGhostData = RecordingGhostData;
+
     static FName NAME_CamMode(TEXT("FreeCam"));
     SetCameraMode(NAME_CamMode);
 
@@ -169,7 +222,6 @@ void ATrialsPlayerController::SetScoreObjectiveState()
     if (UTC != nullptr)
     {
         PawnPendingDestroy(UTC);
-        UnPossess();
         SetViewTarget(UTC);
 
         UTC->GetCharacterMovement()->StopMovementImmediately();
@@ -187,28 +239,15 @@ void ATrialsPlayerController::SetScoreObjectiveState()
         }
     }
 
-    auto* GhostData = RecordingGhostData;
     FTimerDelegate TimerCallback;
-    TimerCallback.BindLambda([this, GhostData, UTC]() -> void
+    TimerCallback.BindLambda([this, UTC]() -> void
     {
         if (UTC != nullptr)
         {
             UTC->SpawnRallyDestinationEffectAt(UTC->GetActorLocation());
             UTC->Destroy();
         }
-
-        auto* Char = GetCharacter();
-        if (Char != nullptr && UTC != Char)
-        {
-            return;
-        }
-
-        // Was GhostData GC'd?
-        if (GhostData == nullptr)
-        {
-            return;
-        }
-        ViewGhostPlayback(GhostData);
+        ScoredGhostData = nullptr;
     });
 
     if (GetWorldTimerManager().IsTimerActive(ViewGhostPlaybackTimerHandle))

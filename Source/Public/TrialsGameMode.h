@@ -32,7 +32,7 @@ class ATrialsGameMode : public AUTGameMode
 
     void DiscardInventory(APawn* Other, AController* Killer) override;
 
-    virtual void ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* PC);
+    virtual void ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Instigator);
 
 private:
     FMapInfo CurrentMapInfo;

@@ -181,14 +181,10 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
     }
 }
 
-void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* PC)
+void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Instigator)
 {
-    check(Obj);
-    auto* TPC = Cast<ATrialsPlayerController>(PC);
-    check(TPC);
-    TPC->SetScoreObjectiveState(); // note: don't call after ScoreRecord!
-
-    auto* ScorerPS = Cast<ATrialsPlayerState>(PC->PlayerState);
+    Cast<ATrialsPlayerController>(Instigator)->ScoredObjective(Obj); // note: don't call after ScoreRecord!
+    auto* PlayerState = Cast<ATrialsPlayerState>(Instigator->PlayerState);
 
     int32 RecordSwitch;
     float RecordTime = Obj->RecordTime;
@@ -196,7 +192,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
     {
         // New top record!
         RecordSwitch = 0;
-        Obj->ScoreRecord(Timer, PC);
+        Obj->ScoreRecord(Timer, Instigator);
     }
     else if (Timer == RecordTime) // Tied with all time
     {
@@ -205,17 +201,17 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
     }
     else // worse, check personal time
     {
-        RecordTime = ScorerPS->ObjectiveRecordTime;
+        RecordTime = PlayerState->ObjectiveRecordTime;
         // New or first personal record
         if (RecordTime == 0.00)
         {
             RecordSwitch = 3;
-            Obj->ScoreRecord(Timer, PC);
+            Obj->ScoreRecord(Timer, Instigator);
         }
         else if (Timer < RecordTime)
         {
             RecordSwitch = 4;
-            Obj->ScoreRecord(Timer, PC);
+            Obj->ScoreRecord(Timer, Instigator);
         }
         else if (Timer == RecordTime)
         {
@@ -229,7 +225,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
 
 
     // ...New time?!
-    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, ScorerPS, nullptr, ScorerPS->TimerState);
+    BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, PlayerState, nullptr, PlayerState->TimerState);
 
     // TODO: Add record event here
 }
