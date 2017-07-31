@@ -130,8 +130,6 @@ void ATrialsPlayerController::ViewGhostPlayback(UUTGhostData* GhostData)
     bPlayerIsWaiting = true;
     BeginSpectatingState();
 
-    ClientSetCameraFade(true, FColor::Yellow);
-
     if (GhostPlayback->Ghost != nullptr)
     {
         SetViewTarget(GhostPlayback->Ghost);
@@ -230,24 +228,34 @@ void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
         if (!UTC->IsDead())
         {            
             //PlayTaunt();
+            //UTC->StopFiring(); // handled in unpossed via PawnPendingDestroy()
             UTC->DisallowWeaponFiring(true);
 
             UTC->PlayAnimMontage(UTC->CurrentTaunt);
 
             UTC->bTriggerRallyEffect = true;
             UTC->OnTriggerRallyEffect();
+
+            // Ensure death.
+            UTC->SetLifeSpan(2.5);
         }
     }
 
     FTimerDelegate TimerCallback;
-    TimerCallback.BindLambda([this, UTC]() -> void
+    TimerCallback.BindLambda([this, Objective, UTC]() -> void
     {
         if (UTC != nullptr)
         {
             UTC->SpawnRallyDestinationEffectAt(UTC->GetActorLocation());
-            UTC->Destroy();
+            UTC->Reset();
         }
         ScoredGhostData = nullptr;
+
+        // We don't have a reference to the objective target, so show objective's spawn point instead.
+        if (GetCharacter() == nullptr)
+        {
+            SetViewTarget(Objective->GetPlayerSpawn(this));
+        }
     });
 
     if (GetWorldTimerManager().IsTimerActive(ViewGhostPlaybackTimerHandle))
