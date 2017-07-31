@@ -181,10 +181,11 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
     }
 }
 
-void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Instigator)
+void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Player)
 {
-    Cast<ATrialsPlayerController>(Instigator)->ScoredObjective(Obj); // note: don't call after ScoreRecord!
-    auto* PlayerState = Cast<ATrialsPlayerState>(Instigator->PlayerState);
+    auto* PlayerState = Cast<ATrialsPlayerState>(Player->PlayerState);
+    Cast<ATrialsPlayerController>(Player)->ScoredObjective(Obj); // note: don't call after ScoreRecord!
+    OnObjectiveCompleted.Broadcast(Obj, Player);
 
     int32 RecordSwitch;
     float RecordTime = Obj->RecordTime;
@@ -192,7 +193,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
     {
         // New top record!
         RecordSwitch = 0;
-        Obj->ScoreRecord(Timer, Instigator);
+        Obj->ScoreRecord(Timer, Player);
     }
     else if (Timer == RecordTime) // Tied with all time
     {
@@ -206,12 +207,12 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
         if (RecordTime == 0.00)
         {
             RecordSwitch = 3;
-            Obj->ScoreRecord(Timer, Instigator);
+            Obj->ScoreRecord(Timer, Player);
         }
         else if (Timer < RecordTime)
         {
             RecordSwitch = 4;
-            Obj->ScoreRecord(Timer, Instigator);
+            Obj->ScoreRecord(Timer, Player);
         }
         else if (Timer == RecordTime)
         {
@@ -223,9 +224,9 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
         }
     }
 
-
     // ...New time?!
     BroadcastLocalized(this, UTrialsObjectiveCompleteMessage::StaticClass(), RecordSwitch, PlayerState, nullptr, PlayerState->TimerState);
 
-    // TODO: Add record event here
+    bool bIsTopRecord = RecordSwitch == 0;
+    OnObjectiveRecordSet.Broadcast(Obj, Player, Timer, RecordTime - Timer, bIsTopRecord);
 }

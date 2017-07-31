@@ -156,6 +156,7 @@ void ATrialsObjective::UpdateRecordState(FString& MapName)
     });
 }
 
+// TODO: Move to GameMode.
 void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);

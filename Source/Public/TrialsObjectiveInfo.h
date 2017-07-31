@@ -5,8 +5,8 @@
 
 #include "TrialsObjectiveInfo.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRecordScored, AUTPlayerController*, PC, float, Time, bool, IsTopRecord);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerController*, PC);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRecordScored, AUTPlayerController*, Player, float, Time, bool, IsTopRecord);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveComplete, AUTPlayerController*, Instigator);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FObjectiveLockChange, bool, IsLocked);
 
 /**

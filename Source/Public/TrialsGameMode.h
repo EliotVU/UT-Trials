@@ -6,6 +6,9 @@
 
 #include "TrialsGameMode.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FObjectiveCompleted, ATrialsObjective*, Objective, AUTPlayerController*, Player);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FObjectiveRecordSet, ATrialsObjective*, Objective, AUTPlayerController*, Player, float, Time, float, TimeDifference, bool, IsTopRecord);
+
 UCLASS(Meta = (ChildCanTick), Config = Trials)
 class ATrialsGameMode : public AUTGameMode
 {
@@ -33,6 +36,12 @@ class ATrialsGameMode : public AUTGameMode
     void DiscardInventory(APawn* Other, AController* Killer) override;
 
     virtual void ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Instigator);
+
+    UPROPERTY(BlueprintAssignable, Category = Objective, BlueprintAuthorityOnly)
+    FObjectiveCompleted OnObjectiveCompleted;
+
+    UPROPERTY(BlueprintAssignable, Category = Objective, BlueprintAuthorityOnly)
+    FObjectiveRecordSet OnObjectiveRecordSet;
 
 private:
     FMapInfo CurrentMapInfo;
