@@ -33,9 +33,7 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
         Ghost->SpawnDefaultController();
         Ghost->GhostComponent->GhostData = GhostData;
 
-        Ghost->GhostComponent->GhostMoveToStart();
         Ghost->GhostComponent->GhostStartPlaying();
-        Ghost->GhostComponent->GhostStopPlaying();
         Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
     }
 }
@@ -52,12 +50,7 @@ void ATrialsGhostReplay::EndPlayback()
 
 void ATrialsGhostReplay::OnRePlayFinished()
 {
-    if (Ghost != nullptr)
-    {
-        Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
-        Ghost->GhostComponent->GhostStopPlaying();
-        Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
-    }
+
 }
 
 void ATrialsGhostReplay::Destroyed()
