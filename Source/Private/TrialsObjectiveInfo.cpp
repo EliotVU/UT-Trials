@@ -119,18 +119,14 @@ ATrialsAPI* ATrialsObjective::GetAPI() const
 
 void ATrialsObjective::UpdateRecordState(FString& MapName)
 {
-    auto ObjName = RecordId;
-    auto ObjTitle = Title;
-    auto ObjDescription = Description;
-
-    if (ObjName.IsEmpty())
+    if (RecordId.IsEmpty())
     {
         UE_LOG(UT, Error, TEXT("RecordId must be set to support records!"));
         return;
     }
 
     auto* API = GetAPI();
-    API->GetObj(MapName, ObjName, [this, API](const FObjInfo& ObjInfo)
+    API->GetObj(MapName, RecordId, [this, API](const FObjInfo& ObjInfo)
     {
         ObjectiveNetId = ObjInfo._id;
         TopRecords = ObjInfo.Records;
@@ -143,6 +139,16 @@ void ATrialsObjective::UpdateRecordState(FString& MapName)
         AvgRecordTime = ATrialsTimerState::RoundTime(Time);
 
         bCanSubmitRecords = true;
+
+        bool bHasMetaDataChanged = ObjInfo.Title != Title.ToString() || ObjInfo.Description != Description.ToString();
+        if (bHasMetaDataChanged)
+        {
+            FObjInfo ObjData;
+            ObjData._id = ObjectiveNetId;
+            ObjData.Title = Title.ToString();
+            ObjData.Description = Description.ToString();
+            API->UpdateObj(ObjData);
+        }
 
         // Try get ghost data
         bool bTimeChanged = Time != OldTime;

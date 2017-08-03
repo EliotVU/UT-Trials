@@ -143,6 +143,9 @@ public:
     FString Title;
 
     UPROPERTY()
+    FString Description;
+
+    UPROPERTY()
     float RecordTime;
 
     UPROPERTY()
@@ -200,6 +203,17 @@ public:
 
                 if (OnSuccess)
                     OnSuccess(ObjInfo);
+            }
+        );
+    }
+
+    void UpdateObj(const FObjInfo& ObjInfo, const TFunction<void()> OnSuccess = nullptr)
+    {
+        Post(TEXT("api/objs/")
+            + FGenericPlatformHttp::UrlEncode(ObjInfo._id), ToJSON(ObjInfo),
+            [OnSuccess](const FAPIResult Result) {
+                if (OnSuccess)
+                    OnSuccess();
             }
         );
     }
