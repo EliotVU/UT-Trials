@@ -75,7 +75,12 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
 
     UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
     class AUTCharacter* ViewingCharacter;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
     class ATrialsObjectiveTarget* LastRenderedTarget;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Widgets Live")
+    class ATrialsPlayerState* ViewingPlayerState;
 
     void InitializeWidget(AUTHUD* Hud) override;
 

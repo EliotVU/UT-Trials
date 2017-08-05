@@ -3,6 +3,7 @@
 #include "TrialsPlayerState.h"
 
 #include "UTHUDWidget_Objective.h"
+#include "TrialsPlayerController.h"
 
 UUTHUDWidget_Objective::UUTHUDWidget_Objective(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -37,6 +38,7 @@ void UUTHUDWidget_Objective::PreDraw(float DeltaTime, AUTHUD* InUTHUDOwner, UCan
     if (UTPlayerOwner != nullptr)
     {
         ViewingCharacter = Cast<AUTCharacter>(UTPlayerOwner->GetViewTarget());
+        ViewingPlayerState = Cast<ATrialsPlayerState>(ViewingCharacter != nullptr ? ViewingCharacter->PlayerState != nullptr ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState : UTPlayerOwner->PlayerState);
     }
 }
 
@@ -44,6 +46,27 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
 {
     auto* GameState = Cast<ATrialsGameState>(UTGameState);
     if (GameState == nullptr) return;
+
+    if (Cast<ATrialsPlayerController>(UTPlayerOwner) != nullptr)
+    {
+        if (UTPlayerOwner->GetCharacter() == nullptr && static_cast<ATrialsPlayerController*>(UTPlayerOwner)->bHasScoredReplayData)
+        {
+            FText RequestRestartLabel = UTHUDOwner->FindKeyMappingTo("RequestRestart");
+            FText& RallyLabel = UTHUDOwner->RallyLabel;
+
+            FFormatNamedArguments Args;
+            Args.Add(TEXT("keybind"), RequestRestartLabel.ToString() == TEXT("<none>") ? RallyLabel : RequestRestartLabel);
+
+            FHUDRenderObject_Text ReplayText;
+            ReplayText.Font = TimerText.Font;
+            ReplayText.Text = FText::Format(FText::FromString(TEXT("(Press [{keybind}] to view Replay)")), Args);
+            ReplayText.Position.X = 0.5;
+            ReplayText.Position.Y = 0.2;
+            ReplayText.HorzPosition = ETextHorzPos::Center;
+            RenderObj_Text(ReplayText);
+            return;
+        }
+    }
 
     FVector ViewPoint;
     FRotator ViewRotation;
@@ -58,16 +81,15 @@ void UUTHUDWidget_Objective::PostDraw(float RenderedTime)
     Super::PostDraw(RenderedTime);
     ViewingCharacter = nullptr;
     LastRenderedTarget = nullptr;
+    ViewingPlayerState = nullptr;
 }
 
 void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, float DeltaTime)
 {
-    auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
-    if (ViewPS == nullptr) return;
-
+    if (ViewingPlayerState == nullptr) return;
     for (auto& Target : GameState->Targets)
     {
-        if (ViewPS->ActiveObjective == nullptr || Target->Objective == ViewPS->ActiveObjective)
+        if (ViewingPlayerState->ActiveObjective == nullptr || Target->Objective == ViewingPlayerState->ActiveObjective)
         {
             DrawObjWorld(GameState, PlayerViewPoint, PlayerViewRotation, Target);
             LastRenderedTarget = Target;
@@ -77,83 +99,83 @@ void UUTHUDWidget_Objective::DrawIndicators(ATrialsGameState* GameState, FVector
 
 void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
 {
-    auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
-    if (ViewPS != nullptr)
+    if (ViewingPlayerState == nullptr)
     {
-        auto* Obj = ViewPS->ActiveObjective;
-        if (Obj != nullptr)
+        return;
+    }
+    auto* Obj = ViewingPlayerState->ActiveObjective;
+    if (Obj != nullptr)
+    {
+        RenderObj_Texture(StatusBackground);
+        if (LastRenderedTarget != nullptr)
         {
-            RenderObj_Texture(StatusBackground);
-            if (LastRenderedTarget != nullptr)
+            auto* IconMat = LastRenderedTarget->GetScreenIcon();
+            if (IconMat)
             {
-                auto* IconMat = LastRenderedTarget->GetScreenIcon();
-                if (IconMat)
-                {
-                    DrawMaterial(IconMat, 
-                        StatusBackground.Position.X, StatusBackground.Position.Y, 
-                        StatusBackground.GetHeight(), StatusBackground.GetHeight(),
-                        0.0, 0.0, 1.0, 1.0,
-                        StatusText.RenderOpacity, StatusText.RenderColor
-                    );
-                }
-            }
-
-            FText TitleText = Obj->Title;
-            StatusText.Text = TitleText;
-            RenderObj_Text(StatusText);
-
-            FText TimeText = ATrialsTimerState::FormatTime(Obj->RecordTime);
-            RecordText.RenderColor = ATrialsTimerState::LeadColor;
-            RecordText.Text = TimeText;
-            RenderObj_Text(RecordText);
-        }
-
-        auto* TimerState = ViewPS->TimerState;
-        if (Obj != nullptr && TimerState != nullptr)
-        {
-            bool IsActive = TimerState->State == TS_Active;
-
-            float RecordTime = TimerState->GetRecordTime();
-            float Timer = TimerState->GetRemainingTime();
-
-            FLinearColor TimerColor = !IsActive
-                ? ATrialsTimerState::IdleColor
-                : ATrialsTimerState::GetTimerColor(Timer);
-
-            FText TimeText = ATrialsTimerState::FormatTime(IsActive ? Timer : RecordTime);
-
-            AnimationAlpha += (DeltaTime * 3);
-
-            float Alpha = FMath::Sin(AnimationAlpha);
-            Alpha = FMath::Abs<float>(Alpha);
-
-            TimerText.RenderColor = TimerColor;
-            TimerText.RenderOpacity = Alpha;
-            TimerText.Text = TimeText;
-            RenderObj_Text(TimerText);
-
-            if (IsActive)
-            {
-                // HACK: + 1 to distinguish from -0.99 +0.99, both are rounded to 0.
-                bool bTick = Timer < 10.0f && static_cast<int32>(LastDrawnTimer + 1) != static_cast<int32>(Timer + 1);
-                if (bTick)
-                {
-                    if (Timer < 0.0f && static_cast<int32>(Timer) == 0)
-                    {
-                        UGameplayStatics::PlaySound2D(GetWorld(), EndTickSound, 3.5f, 1.0f, 0.0f);
-                    }
-                    else if (Timer > 0.0f)
-                    {
-                        UGameplayStatics::PlaySound2D(GetWorld(), TickSound, 1.5f, 20.0f / Timer, 0.0f);
-                    }
-                }
-                LastDrawnTimer = Timer;
+                DrawMaterial(IconMat, 
+                    StatusBackground.Position.X, StatusBackground.Position.Y, 
+                    StatusBackground.GetHeight(), StatusBackground.GetHeight(),
+                    0.0, 0.0, 1.0, 1.0,
+                    StatusText.RenderOpacity, StatusText.RenderColor
+                );
             }
         }
-        else
+
+        FText TitleText = Obj->Title;
+        StatusText.Text = TitleText;
+        RenderObj_Text(StatusText);
+
+        FText TimeText = ATrialsTimerState::FormatTime(Obj->RecordTime);
+        RecordText.RenderColor = ATrialsTimerState::LeadColor;
+        RecordText.Text = TimeText;
+        RenderObj_Text(RecordText);
+    }
+
+    auto* TimerState = ViewingPlayerState->TimerState;
+    if (Obj != nullptr && TimerState != nullptr)
+    {
+        bool IsActive = TimerState->State == TS_Active;
+
+        float RecordTime = TimerState->GetRecordTime();
+        float Timer = TimerState->GetRemainingTime();
+
+        FLinearColor TimerColor = !IsActive
+            ? ATrialsTimerState::IdleColor
+            : ATrialsTimerState::GetTimerColor(Timer);
+
+        FText TimeText = ATrialsTimerState::FormatTime(IsActive ? Timer : RecordTime);
+
+        AnimationAlpha += (DeltaTime * 3);
+
+        float Alpha = FMath::Sin(AnimationAlpha);
+        Alpha = FMath::Abs<float>(Alpha);
+
+        TimerText.RenderColor = TimerColor;
+        TimerText.RenderOpacity = Alpha;
+        TimerText.Text = TimeText;
+        RenderObj_Text(TimerText);
+
+        if (IsActive)
         {
-            AnimationAlpha = 0.0;
+            // HACK: + 1 to distinguish from -0.99 +0.99, both are rounded to 0.
+            bool bTick = Timer < 10.0f && static_cast<int32>(LastDrawnTimer + 1) != static_cast<int32>(Timer + 1);
+            if (bTick)
+            {
+                if (Timer < 0.0f && static_cast<int32>(Timer) == 0)
+                {
+                    UGameplayStatics::PlaySound2D(GetWorld(), EndTickSound, 3.5f, 1.0f, 0.0f);
+                }
+                else if (Timer > 0.0f)
+                {
+                    UGameplayStatics::PlaySound2D(GetWorld(), TickSound, 1.5f, 20.0f / Timer, 0.0f);
+                }
+            }
+            LastDrawnTimer = Timer;
         }
+    }
+    else
+    {
+        AnimationAlpha = 0.0;
     }
 }
 
@@ -220,17 +242,16 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
     }
     else
     {
-        auto* ViewPS = Cast<ATrialsPlayerState>(ViewingCharacter ? ViewingCharacter->PlayerState : UTPlayerOwner->PlayerState);
-        if (ViewPS != nullptr)
+        if (ViewingPlayerState != nullptr)
         {
-            if (ViewPS->ActiveObjective == nullptr)
+            if (ViewingPlayerState->ActiveObjective == nullptr)
             {
                 TitleItem.Text = Target->Objective->Title;
                 RenderObj_Text(TitleItem, FVector2D(DrawScreenPosition));
             }
-            else if (ViewPS->ActiveObjective == Target->Objective)
+            else if (ViewingPlayerState->ActiveObjective == Target->Objective)
             {
-                auto* TimerState = ViewPS->TimerState;
+                auto* TimerState = ViewingPlayerState->TimerState;
                 if (TimerState != nullptr)
                 {
                     bool IsActive = TimerState->State == TS_Active;
@@ -242,7 +263,7 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
                         : ATrialsTimerState::IdleColor;
                     DetailsItem.RenderColor = TimerColor;
 
-                    FText TimeText = ViewPS->FormatTime(IsActive ? Timer : RecordTime);
+                    FText TimeText = ViewingPlayerState->FormatTime(IsActive ? Timer : RecordTime);
                     DetailsItem.Text = TimeText;
                     RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
                 }
