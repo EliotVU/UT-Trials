@@ -5,6 +5,7 @@
 #include "TrialsGameMode.h"
 #include "TrialsGhostSerializer.h"
 #include "UTGhostComponent.h"
+#include "UnrealNetwork.h"
 
 void ATrialsPlayerController::SetupInputComponent()
 {
@@ -59,6 +60,8 @@ void ATrialsPlayerController::ServerSuicide_Implementation()
 
 void ATrialsPlayerController::ServerRestartPlayer_Implementation()
 {
+    ScoredGhostData = nullptr;
+    bHasScoredReplayData = false;
     StopGhostPlayback(false);
     Super::ServerRestartPlayer_Implementation();
 }
@@ -83,6 +86,7 @@ void ATrialsPlayerController::ServerRequestRestart_Implementation()
         return;
     }
 
+    // FIXME: ScoredGhostData is sometimes not available? (assumption). Sometimes replay will force a map center view.
     if (GetCharacter() == nullptr && ScoredGhostData != nullptr)
     {
         if (UTPlayerState->bIsSpectator)
@@ -92,6 +96,7 @@ void ATrialsPlayerController::ServerRequestRestart_Implementation()
 
         ViewGhostPlayback(ScoredGhostData);
         ScoredGhostData = nullptr;
+        bHasScoredReplayData = false;
         return;
     }
     ServerSuicide();
@@ -134,7 +139,6 @@ void ATrialsPlayerController::ViewGhostPlayback(UUTGhostData* GhostData)
     {
         SetViewTarget(GhostPlayback->Ghost);
 
-        GhostPlayback->Ghost->GhostComponent->GhostStopPlaying();
         GhostPlayback->Ghost->GhostComponent->GhostStartPlaying();
         GhostPlayback->Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsPlayerController::OnEndGhostPlayback);
 
@@ -146,8 +150,19 @@ void ATrialsPlayerController::OnEndGhostPlayback()
 {
     if (GhostPlayback != nullptr)
     {
+        bool bRestart = false;
+        if (GetViewTarget() == GhostPlayback->Ghost)
+        {
+            bRestart = true;
+        }
+
         GhostPlayback->Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsPlayerController::OnEndGhostPlayback);
-        GhostPlayback->Destroy();
+        GhostPlayback->EndPlayback();
+
+        if (bRestart)
+        {
+            ServerRestartPlayer(); // Note: will destroy GhostPlayback.
+        }
     }
 }
 
@@ -209,52 +224,61 @@ void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objectiv
     );
 }
 
+// FIXME: Camera is locked despite "Free".
 void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
 {
-    ScoredGhostData = RecordingGhostData;
-
     static FName NAME_CamMode(TEXT("FreeCam"));
     SetCameraMode(NAME_CamMode);
 
-    auto* UTC = Cast<AUTCharacter>(GetCharacter());
-    if (UTC != nullptr)
+    ScoredGhostData = RecordingGhostData;
+    bHasScoredReplayData = true;
+
+    auto* UTPawn = Cast<APawn>(GetPawn());
+    if (UTPawn != nullptr)
     {
-        PawnPendingDestroy(UTC);
-        SetViewTarget(UTC);
+        auto* UTChar = Cast<AUTCharacter>(GetCharacter());
+        if (UTChar != nullptr && !UTChar->IsDead())
+        {
+            UTChar->DisallowWeaponFiring(true);
+            UTChar->GetCharacterMovement()->StopMovementImmediately();
+            UTChar->GetCharacterMovement()->DisableMovement();
 
-        UTC->GetCharacterMovement()->StopMovementImmediately();
-        UTC->GetCharacterMovement()->DisableMovement();
-
-        if (!UTC->IsDead())
-        {            
-            //PlayTaunt();
-            //UTC->StopFiring(); // handled in unpossed via PawnPendingDestroy()
-            UTC->DisallowWeaponFiring(true);
-
-            UTC->PlayAnimMontage(UTC->CurrentTaunt);
-
-            UTC->bTriggerRallyEffect = true;
-            UTC->OnTriggerRallyEffect();
-
-            // Ensure death.
-            UTC->SetLifeSpan(2.5);
+            UTChar->PlayAnimMontage(UTChar->CurrentTaunt);
+            UTChar->bTriggerRallyEffect = true;
+            UTChar->OnTriggerRallyEffect();
         }
+
+        // Ensure death.
+        UTPawn->SetLifeSpan(2.5);
+        PawnPendingDestroy(UTPawn);
+        SetViewTarget(UTPawn);
+    }
+    else
+    {
+        SetViewTarget(Objective->GetPlayerSpawn(this));
     }
 
     FTimerDelegate TimerCallback;
-    TimerCallback.BindLambda([this, Objective, UTC]() -> void
+    TimerCallback.BindLambda([this, UTPawn]() -> void
     {
-        if (UTC != nullptr)
-        {
-            UTC->SpawnRallyDestinationEffectAt(UTC->GetActorLocation());
-            UTC->Reset();
-        }
+        // Cleanup replay possibility.
         ScoredGhostData = nullptr;
+        bHasScoredReplayData = false;
 
-        // We don't have a reference to the objective target, so show objective's spawn point instead.
-        if (GetCharacter() == nullptr)
+        if (UTPawn != nullptr)
         {
-            SetViewTarget(Objective->GetPlayerSpawn(this));
+            if (Cast<AUTCharacter>(UTPawn))
+            {
+                static_cast<AUTCharacter*>(UTPawn)->SpawnRallyDestinationEffectAt(UTPawn->GetActorLocation());
+            }
+            UTPawn->SetLifeSpan(0.0);
+            UTPawn->Destroy();
+        }
+
+        bool bIsSpectatingGhost = (GhostPlayback != nullptr && GetViewTarget() == GhostPlayback->Ghost);
+        if ((StateName == NAME_Spectating || GetCharacter() == nullptr) && !bIsSpectatingGhost)
+        {
+            SetViewTarget(GetWorld()->GetAuthGameMode()->FindPlayerStart(this));
         }
     });
 
@@ -264,4 +288,11 @@ void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
         UE_LOG(UT, Warning, TEXT("ViewGhostPlaybackTimerHandle is already running!!!"));
     }
     GetWorldTimerManager().SetTimer(ViewGhostPlaybackTimerHandle, TimerCallback, 2.0, false);
+}
+
+void ATrialsPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME_CONDITION(ATrialsPlayerController, bHasScoredReplayData, COND_OwnerOnly);
 }

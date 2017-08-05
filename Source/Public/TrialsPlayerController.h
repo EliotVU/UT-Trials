@@ -29,9 +29,12 @@ public:
     UPROPERTY()
     class UUTGhostData* RecordingGhostData;
 
-    // Temporary reference to the player's ghost data of last scored scored objective run.
+    // Temporary reference to the player's ghost data of the last scored objective run.
     UPROPERTY()
     class UUTGhostData* ScoredGhostData;
+
+    UPROPERTY(Replicated)
+    uint32 bHasScoredReplayData : 1;
 
     void SetupInputComponent() override;
     void Destroyed() override;
@@ -70,8 +73,12 @@ public:
     void StopRecordingGhostData();
 
     void ViewGhostPlayback(class UUTGhostData* GhostData);
+
+    UFUNCTION()
     void OnEndGhostPlayback();
+
     void SummonGhostPlayback(class UUTGhostData* GhostData);
+
     void StopGhostPlayback(bool bDeActivate);
 
     void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
