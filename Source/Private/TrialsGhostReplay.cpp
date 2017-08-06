@@ -18,8 +18,6 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
     if (Ghost != nullptr)
     {
         Ghost->GhostComponent->GhostData = GhostData;
-
-        OnRePlayFinished();
         return;
     }
 
@@ -30,11 +28,11 @@ void ATrialsGhostReplay::StartPlayback(UUTGhostData* GhostData)
     Ghost = GetWorld()->SpawnActor<AUTCharacter>(GetWorld()->GetAuthGameMode<ATrialsGameMode>()->GhostClass, SpawnInfo);
     if (Ghost != nullptr)
     {
+        Ghost->bOnlyRelevantToOwner = true;
+
         Ghost->SpawnDefaultController();
         Ghost->GhostComponent->GhostData = GhostData;
-
         Ghost->GhostComponent->GhostStartPlaying();
-        Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
     }
 }
 
@@ -43,14 +41,8 @@ void ATrialsGhostReplay::EndPlayback()
 {
     if (Ghost != nullptr)
     {
-        Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
         Ghost->GhostComponent->GhostStopPlaying();
     }
-}
-
-void ATrialsGhostReplay::OnRePlayFinished()
-{
-
 }
 
 void ATrialsGhostReplay::Destroyed()
@@ -58,7 +50,6 @@ void ATrialsGhostReplay::Destroyed()
     if (Ghost != nullptr)
     {
         Ghost->GhostComponent->GhostData = nullptr;
-        Ghost->GhostComponent->OnGhostPlayFinished.RemoveDynamic(this, &ATrialsGhostReplay::OnRePlayFinished);
         Ghost->GhostComponent->GhostStopPlaying();
 
         if (Ghost->Controller)

@@ -15,8 +15,6 @@ class ATrialsPlayerController : public AUTPlayerController
 public:
     TSharedPtr<class STrialsRecordsMenu> RecordsMenu;
 
-    ATrialsPlayerState* TPlayerState;
-
     // Ghost manager that is currently active for this player.
     UPROPERTY()
     class ATrialsGhostReplay* GhostPlayback;
@@ -38,7 +36,6 @@ public:
 
     void SetupInputComponent() override;
     void Destroyed() override;
-    void OnRep_PlayerState() override;
 
     void ServerSuicide_Implementation() override;
     void ServerRestartPlayer_Implementation() override;

@@ -23,12 +23,6 @@ void ATrialsPlayerController::Destroyed()
     Super::Destroyed();
 }
 
-void ATrialsPlayerController::OnRep_PlayerState()
-{
-    Super::OnRep_PlayerState();
-    TPlayerState = Cast<ATrialsPlayerState>(PlayerState);
-}
-
 void ATrialsPlayerController::ServerSuicide_Implementation()
 {
     // Try to perform an instant re-spawn with no death events and gore.
@@ -89,11 +83,7 @@ void ATrialsPlayerController::ServerRequestRestart_Implementation()
     // FIXME: ScoredGhostData is sometimes not available? (assumption). Sometimes replay will force a map center view.
     if (GetCharacter() == nullptr && ScoredGhostData != nullptr)
     {
-        if (UTPlayerState->bIsSpectator)
-        {
-            EndSpectatingState();
-        }
-
+        bPlayerIsWaiting = true;
         ViewGhostPlayback(ScoredGhostData);
         ScoredGhostData = nullptr;
         bHasScoredReplayData = false;
@@ -130,19 +120,13 @@ void ATrialsPlayerController::StopRecordingGhostData()
 void ATrialsPlayerController::ViewGhostPlayback(UUTGhostData* GhostData)
 {
     SummonGhostPlayback(GhostData);
-    check(GhostPlayback);
-
-    bPlayerIsWaiting = true;
-    BeginSpectatingState();
-
     if (GhostPlayback->Ghost != nullptr)
     {
+        ChangeState(NAME_Spectating);
         SetViewTarget(GhostPlayback->Ghost);
 
         GhostPlayback->Ghost->GhostComponent->GhostStartPlaying();
         GhostPlayback->Ghost->GhostComponent->OnGhostPlayFinished.AddDynamic(this, &ATrialsPlayerController::OnEndGhostPlayback);
-
-        // TODO: on player respawn, do a ghost cleanup. 
     }
 }
 
@@ -176,10 +160,18 @@ void ATrialsPlayerController::SummonGhostPlayback(UUTGhostData* GhostData)
         SpawnInfo.Owner = this;
         GhostPlayback = GetWorld()->SpawnActor<ATrialsGhostReplay>(SpawnInfo);
     }
+    else
+    {
+        GhostPlayback->EndPlayback();
+    }
 
     if (GhostPlayback != nullptr)
     {
         GhostPlayback->StartPlayback(GhostData);
+    }
+    else
+    {
+        UE_LOG(UT, Error, TEXT("GhostPlayback couldn't be spawned!!!"));
     }
 }
 
@@ -227,11 +219,14 @@ void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objectiv
 // FIXME: Camera is locked despite "Free".
 void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
 {
+    // HACK: Temp fix where ghost playback ends immediately if player completed an objective after the ghost has faded out!
+    StopGhostPlayback(false);
+
     static FName NAME_CamMode(TEXT("FreeCam"));
     SetCameraMode(NAME_CamMode);
 
     ScoredGhostData = RecordingGhostData;
-    bHasScoredReplayData = true;
+    bHasScoredReplayData = ScoredGhostData != nullptr;
 
     auto* UTPawn = Cast<APawn>(GetPawn());
     if (UTPawn != nullptr)
@@ -251,10 +246,13 @@ void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
         // Ensure death.
         UTPawn->SetLifeSpan(2.5);
         PawnPendingDestroy(UTPawn);
+
+        ChangeState(NAME_Spectating);
         SetViewTarget(UTPawn);
     }
     else
     {
+        ChangeState(NAME_Spectating);
         SetViewTarget(Objective->GetPlayerSpawn(this));
     }
 
@@ -278,6 +276,8 @@ void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
         bool bIsSpectatingGhost = (GhostPlayback != nullptr && GetViewTarget() == GhostPlayback->Ghost);
         if ((StateName == NAME_Spectating || GetCharacter() == nullptr) && !bIsSpectatingGhost)
         {
+            bPlayerIsWaiting = true;
+            ChangeState(NAME_Spectating);
             SetViewTarget(GetWorld()->GetAuthGameMode()->FindPlayerStart(this));
         }
     });
