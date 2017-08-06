@@ -2,6 +2,7 @@
 #include "TrialsSTRGameMode.h"
 
 #include "TrialsPlayerState.h"
+#include "UTGhostController.h"
 
 ATrialsSTRGameMode::ATrialsSTRGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -35,6 +36,13 @@ void ATrialsSTRGameMode::FinishRestartPlayer(AController* NewPlayer, const FRota
 
 bool ATrialsSTRGameMode::ModifyDamage_Implementation(int32& Damage, FVector& Momentum, APawn* Injured, AController* InstigatedBy, const FHitResult& HitInfo, AActor* DamageCauser, TSubclassOf<UDamageType> DamageType)
 {
+    if (InstigatedBy != nullptr && InstigatedBy->IsA<AUTGhostController>())
+    {
+        Momentum = FVector::ZeroVector;
+        Damage = 0;
+        return true;
+    }
+
     if (InstigatedBy != nullptr && InstigatedBy != Injured->Controller && UTGameState->OnSameTeam(InstigatedBy, Injured))
     {
         // Remove team boosting.

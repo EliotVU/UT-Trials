@@ -9,7 +9,7 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FObjectiveCompleted, ATrialsObjective*, Objective, AUTPlayerController*, Player);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FObjectiveRecordSet, ATrialsObjective*, Objective, AUTPlayerController*, Player, float, Time, float, TimeDifference, bool, IsTopRecord);
 
-UCLASS(Meta = (ChildCanTick), Config = Trials)
+UCLASS(Meta = (ChildCanTick), Config = Trials, Abstract)
 class ATrialsGameMode : public AUTGameMode
 {
     GENERATED_UCLASS_BODY()
