@@ -11,35 +11,47 @@
 ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
-    bCanSubmitRecords = false;
-
     SetReplicates(true);
     bAlwaysRelevant = true;
     NetPriority = 1.0;
 
-#if WITH_EDITORONLY_DATA
-    //auto* MySprite = GetSpriteComponent();
-    //if (MySprite)
-    //{
-    //    struct FConstructorStatics
-    //    {
-    //        ConstructorHelpers::FObjectFinderOptional<UTexture2D> TextureObject;
-    //        FName ID;
-    //        FText NAME;
+    Camera = ObjectInitializer.CreateDefaultSubobject<UCameraComponent>(this, TEXT("ObjectiveCamera"));
+    if (Camera)
+    {
+        if (RootComponent)
+        {
+            Camera->SetupAttachment(RootComponent);
+        }
+        else
+        {
+            RootComponent = Camera;
+        }
 
-    //        FConstructorStatics()
-    //            : TextureObject(TEXT("/Game/RestrictedAssets/EditorAssets/Icons/generic_objective.generic_objective"))
-    //            , ID(TEXT("Objectives"))
-    //            , NAME(NSLOCTEXT("SpriteCategory", "Objectives", "Objectives"))
-    //        {
-    //        }
-    //    };
-    //    static FConstructorStatics ConstructorStatics;
-    //    MySprite->Sprite = ConstructorStatics.TextureObject.Get();
-    //    MySprite->SpriteInfo.Category = ConstructorStatics.ID;
-    //    MySprite->SpriteInfo.DisplayName = ConstructorStatics.NAME;
-    //}
+        FRotator DefaultCameraRotation;
+        DefaultCameraRotation.Roll = 0.f;
+        DefaultCameraRotation.Pitch = -20.f;
+        DefaultCameraRotation.Yaw = 90.f;
+
+        FTransform CameraTransform;
+        CameraTransform.SetTranslation(FVector(0.f, 0.f, 80.f));
+        CameraTransform.SetRotation(DefaultCameraRotation.Quaternion());
+        Camera->SetRelativeTransform(CameraTransform);
+        Camera->SetFieldOfView(100.f);
+    }
+
+#if WITH_EDITORONLY_DATA
+    if (!IsRunningCommandlet())
+    {
+        if (GetSpriteComponent())
+        {
+            ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteObject(TEXT("/Engine/Tutorial/Paper2D/TutorialAssets/Paper2DSprite_TutorialIcon.Paper2DSprite_TutorialIcon"));
+            GetSpriteComponent()->Sprite = SpriteObject.Get();
+            GetSpriteComponent()->SetupAttachment(RootComponent);
+        }
+    }
 #endif // WITH_EDITORONLY_DATA
+
+    bCanSubmitRecords = false;
 }
 
 #ifdef WITH_EDITOR
@@ -213,19 +225,23 @@ void ATrialsObjective::ActivateObjective(APlayerController* PC)
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr) return;
 
-    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-    if (Char == nullptr) return;
+    if (Char == nullptr)
+    {
+        UE_LOG(UT, Warning, TEXT("A character is required to active an objective."));
+        return;
+    }
 
     for (auto i = 0; i < PlayerInventory.Num(); ++i)
     {
         auto* Inv = Char->CreateInventory(PlayerInventory[i]);
         if (Inv != nullptr)
         {
-            Char->AddInventory(Inv, false);
+            Char->AddInventory(Inv, true);
         }
     }
 
+    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
     if (PS->ActiveObjective != this)
     {
         TPC->StopGhostPlayback(false);
@@ -302,13 +318,18 @@ void ATrialsObjective::DisableObjective(APlayerController* PC, bool bDeActivate 
         {
             FTransform Trans = Char->GetTransform();
             auto Rot = PC->GetControlRotation();
-            Trans.SetRotation(FQuat(Rot));
 
             auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
             Char->Reset();
             PC->SetPawn(nullptr);
             GameMode->RestartPlayer(PC);
             // GameMode->RestartPlayerAtTransform(PC, Trans);
+
+            if (PC->GetPawn())
+            {
+                PC->GetPawn()->SetActorTransform(Trans);
+                PC->SetControlRotation(Rot);
+            }
         }
 
         if (bDeActivate)

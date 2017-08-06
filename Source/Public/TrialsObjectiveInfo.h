@@ -20,16 +20,23 @@ class TRIALS_API ATrialsObjective : public AInfo
 {
     GENERATED_UCLASS_BODY()
 
+    UPROPERTY(Instanced, EditAnywhere, Category = "Camera")
+    UCameraComponent* Camera;
+
     /**
      * A title to be displayed to players. 
      * Note: This actor's name will be used to reference records. 
      */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = ObjectiveSummary)
     FText Title;
 
     /* An optional description for the objective. */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = ObjectiveSummary)
     FText Description;
+
+    /** A shot of the objective's area. To be used within menus. */
+    UPROPERTY(EditInstanceOnly, Category = ObjectiveSummary)
+    UTexture2D* Screenshot;
 
     /**
      * If set, objective will be locked if set objective is not unlocked (on a player basis).
@@ -38,7 +45,16 @@ class TRIALS_API ATrialsObjective : public AInfo
     ATrialsObjective* RequisiteObjective;
 
     /* Objectives that are held locked by this objective. */
+    UPROPERTY()
     TArray<ATrialsObjective*> LockedObjectives;
+
+    /**
+    * Inventory to give to player when this objective activates.
+    *
+    * Note: When a player disables this objective he or she will be given an entire new Pawn as an anti-cheat measure.
+    */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Objective)
+    TArray< TSubclassOf<AUTInventory> > PlayerInventory;
 
     /**
     * This represents the id that will be used when storing records remotely.
@@ -63,15 +79,7 @@ class TRIALS_API ATrialsObjective : public AInfo
     float AvgRecordTime;
 
     UPROPERTY(Replicated)
-    bool bCanSubmitRecords;
-
-    /**
-     * Inventory to give to player when this objective activates.
-     * 
-     * Note: When a player disables this objective he or she will be given an entire new Pawn as an anti-cheat measure.
-     */
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pawn")
-    TArray< TSubclassOf<AUTInventory> > PlayerInventory;
+    uint32 bCanSubmitRecords : 1;
 
     void BeginPlay() override;
 
@@ -129,13 +137,14 @@ class TRIALS_API ATrialsObjective : public AInfo
 #endif
 
 protected:
-    bool bLockedLocale;
+    uint32 bLockedLocale : 1;
 
     ATrialsAPI* GetAPI() const;
 
     /* A PlayerStart for those who have died during this objective. */
     UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
     AUTPlayerStart* PlayerStart;
+
 
     // Current top record's ghost data.
     UPROPERTY()
