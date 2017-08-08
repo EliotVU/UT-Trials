@@ -63,6 +63,7 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
             ReplayText.Position.X = 0.5;
             ReplayText.Position.Y = 0.2;
             ReplayText.HorzPosition = ETextHorzPos::Center;
+            ReplayText.bHidden = false; // where the fuck is this set to TRUE?
             RenderObj_Text(ReplayText);
             return;
         }
