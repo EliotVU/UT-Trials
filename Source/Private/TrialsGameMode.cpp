@@ -43,6 +43,7 @@ void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, F
     // Authenticate this server.
     RecordsAPI = Cast<ATrialsAPI>(GetWorld()->SpawnActor(ATrialsAPI::StaticClass()));
     RecordsAPI->Authenticate(RecordsBaseURL, RecordsAPIToken, ServerNameOverride, [this, MapName]() {
+        this->GetGameState<ATrialsGameState>()->bAPIAuthenticated = true;
         RecordsAPI->GetMap(MapName, [this](FMapInfo& MapInfo) {
             CurrentMapInfo = MapInfo;
             APIReady();
@@ -53,8 +54,6 @@ void ATrialsGameMode::InitGame(const FString& MapName, const FString& Options, F
 void ATrialsGameMode::APIReady()
 {
     UE_LOG(UT, Log, TEXT("Records API is Ready!"));
-    bAPIAuthenticated = true;
-
     for (TActorIterator<ATrialsObjective> It(GetWorld()); It; ++It)
     {
         It->UpdateRecordState(CurrentMapInfo.Name);
@@ -81,35 +80,27 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
 
         RecordsAPI->LoginPlayer(PS->UniqueId->ToString(), PS->PlayerName, [this, PS](const FPlayerInfo& Result)
         {
-            PS->PlayerNetId = Result._id;
             UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *Result.Name, *Result.CountryCode);
+            PS->PlayerNetId = Result._id;
 
-            // localhost:8080/api/maps/STR-Temple/players/5944211eaeaaeccdf6f782de
-            RecordsAPI->Fetch(TEXT("api/maps/") 
-                + FGenericPlatformHttp::UrlEncode(GetWorld()->GetMapName()) 
-                + TEXT("/players/") 
-                + FGenericPlatformHttp::UrlEncode(PS->PlayerNetId), 
-                [this, PS](const FAPIResult& Data)
+            RecordsAPI->GetPlayerObjs(GetWorld()->GetMapName(), PS->PlayerNetId, [this, PS](const FPlayerObjectiveInfo& UnlockedInfo)
+            {
+                // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
+                auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Targets;
+                for (const auto& Target : ObjTargets)
                 {
-                    FPlayerObjectiveInfo UnlockedInfo;
-                    ATrialsAPI::FromJSON(Data, &UnlockedInfo);
+                    if (Target == nullptr) continue;
 
-                    // FIXME: Loop through the objectives directly instead of targets(currently named "Objectives")
-                    auto& ObjTargets = Cast<ATrialsGameState>(GameState)->Targets;
-                    for (const auto& Target : ObjTargets)
+                    bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
                     {
-                        if (Target == nullptr) continue;
-
-                        bool IsCompleted = UnlockedInfo.Objs.ContainsByPredicate([Target](const FObjectiveInfo& Item)
-                        {
-                            return Item.Name == Target->Objective->RecordId;
-                        });
-                        if (IsCompleted)
-                        {
-                            PS->RegisterUnlockedObjective(Target->Objective);
-                        }
+                        return Item.Name == Target->Objective->RecordId;
+                    });
+                    if (IsCompleted)
+                    {
+                        PS->RegisterUnlockedObjective(Target->Objective);
                     }
-                });
+                }
+            });
         });
     }
 }

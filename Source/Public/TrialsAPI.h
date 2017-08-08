@@ -207,6 +207,25 @@ public:
         );
     }
 
+    /**
+     * Retrieves a list of objectives that a player has completed on a map.
+     */
+    void GetPlayerObjs(const FString& MapName, const FString& PlayerId, const TFunction<void(const FPlayerObjectiveInfo& PlayerObjInfo)> OnSuccess = nullptr)
+    {
+        Fetch(TEXT("api/maps/")
+            + FGenericPlatformHttp::UrlEncode(MapName)
+            + TEXT("/players/")
+            + FGenericPlatformHttp::UrlEncode(PlayerId),
+            [OnSuccess](const FAPIResult& Data)
+        {
+            FPlayerObjectiveInfo PlayerObjInfo;
+            FromJSON(Data, &PlayerObjInfo);
+
+            if (OnSuccess)
+                OnSuccess(PlayerObjInfo);
+        });
+    }
+
     void UpdateObj(const FObjInfo& ObjInfo, const TFunction<void()> OnSuccess = nullptr)
     {
         Post(TEXT("api/objs/")
@@ -218,7 +237,24 @@ public:
         );
     }
 
-    void SubmitRecord(const float Value, const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
+    void GetPlayerRecord(const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess)
+    {
+        Fetch(TEXT("api/recs/") 
+            + FGenericPlatformHttp::UrlEncode(ObjId) 
+            + TEXT("/")
+            + FGenericPlatformHttp::UrlEncode(PlayerId),
+            [OnSuccess](const FAPIResult& Data)
+            {
+                FRecordInfo RecInfo;
+                FromJSON(Data, &RecInfo);
+
+                if (OnSuccess)
+                    OnSuccess(RecInfo);
+            }
+        );
+    }
+
+    void SubmitRecord(const FString& ObjId, const FString& PlayerId, const float Value, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
     {
         checkSlow(!ObjId.IsEmpty());
         checkSlow(!PlayerId.IsEmpty());
@@ -292,6 +328,7 @@ public:
         });
     }
 
+private:
     TSharedRef<IHttpRequest> Fetch(
         const FString Path, 
         const FAPIOnResult& OnSuccess,
@@ -327,7 +364,6 @@ public:
         return JsonOut;
     }
 
-private:
     TSharedRef<IHttpRequest> CreateRequest(const FString& Verb, const FString& Path) const;
     void SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunction<bool(const FHttpResponsePtr& HttpResponse)>& OnComplete);
     void OnRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded, TFunction<bool(const FHttpResponsePtr& HttpResponse)> OnComplete) const;

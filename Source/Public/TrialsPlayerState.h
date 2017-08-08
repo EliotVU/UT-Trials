@@ -11,6 +11,7 @@ class ATrialsPlayerState : public AUTPlayerState
     GENERATED_UCLASS_BODY()
 
     FString PlayerNetId;
+    FString ObjectiveRecordId; // The player's current objective's record id. Required to fetch ghost data.
 
     UPROPERTY(Replicated, BlueprintReadOnly)
     ATrialsObjective* ActiveObjective;
@@ -32,7 +33,7 @@ class ATrialsPlayerState : public AUTPlayerState
 
     float StartObjective() const;
     float EndObjective() const;
-    void SetObjective(ATrialsObjective* Obj);
+    void SetActiveObjective(ATrialsObjective* Obj);
 
     void UpdateRecordTime(float Time);
 

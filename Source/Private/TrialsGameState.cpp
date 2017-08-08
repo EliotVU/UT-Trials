@@ -36,4 +36,5 @@ void ATrialsGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(ATrialsGameState, Targets);
+    DOREPLIFETIME_CONDITION(ATrialsGameState, bAPIAuthenticated, COND_InitialOnly);
 }

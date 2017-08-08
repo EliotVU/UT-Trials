@@ -50,5 +50,4 @@ class ATrialsGameMode : public AUTGameMode
 
 private:
     FMapInfo CurrentMapInfo;
-    bool bAPIAuthenticated;
 };

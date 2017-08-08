@@ -6,6 +6,7 @@
 #include "TrialsGhostSerializer.h"
 #include "UTGhostComponent.h"
 #include "UnrealNetwork.h"
+#include "TrialsObjectiveSetMessage.h"
 
 void ATrialsPlayerController::SetupInputComponent()
 {
@@ -90,6 +91,29 @@ void ATrialsPlayerController::ServerRequestRestart_Implementation()
         return;
     }
     ServerSuicide();
+}
+
+void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(UUTGhostData* GhostData)> OnResult)
+{
+    if (RecordedGhostData)
+    {
+        OnResult(RecordedGhostData);
+        return;
+    }
+
+    auto* API = GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
+    API->DownloadGhost(Objective->ObjectiveNetId, Cast<ATrialsPlayerState>(PlayerState)->PlayerNetId,
+        [this, OnResult](TArray<uint8> Data)
+        {
+            UUTGhostData* GhostData = GhostDataSerializer::Serialize(Data);
+            RecordedGhostData = GhostData;
+            OnResult(GhostData);
+        },
+        [OnResult]()
+        {
+            OnResult(nullptr);
+        }
+    );
 }
 
 void ATrialsPlayerController::StartRecordingGhostData()
@@ -190,35 +214,86 @@ void ATrialsPlayerController::StopGhostPlayback(bool bDeActivate)
     }
 }
 
-void ATrialsPlayerController::FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(UUTGhostData* GhostData)> OnResult)
+void ATrialsPlayerController::StartObjective(ATrialsObjective* Objective)
 {
-    check(Objective);
-
-    if (RecordedGhostData)
+    auto* PS = Cast<ATrialsPlayerState>(PlayerState);
+    if (Objective != PS->ActiveObjective)
     {
-        OnResult(RecordedGhostData);
+        PS->SetActiveObjective(Objective);
+        ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 0, PS, nullptr, Objective);
+
+        if (Objective != nullptr)
+        {
+            auto* API = GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
+            API->GetPlayerRecord(Objective->ObjectiveNetId, PS->PlayerNetId, [this, PS, Objective](const FRecordInfo& RecInfo)
+            {
+                // Player may have switched active objective during this request.
+                if (PS->ActiveObjective != Objective)
+                {
+                    return;
+                }
+
+                PS->ObjectiveRecordId = RecInfo._id;
+
+                float RecordTime = RecInfo.Value;
+                PS->UpdateRecordTime(RecordTime);
+            });
+        }
+    }
+
+    if (Objective != nullptr)
+    {
+        StartRecordingGhostData();
+        FetchObjectiveGhostData(Objective, [this, Objective, PS](UUTGhostData* GhostData)
+        {
+            // Let's ensure that we don't playback a ghost if player de-activated this objective during this download.
+            if (PS->ActiveObjective != Objective)
+            {
+                return;
+            }
+
+            GhostData = GhostData != nullptr ? GhostData : Objective->RecordGhostData;
+            if (GhostData != nullptr)
+            {
+                SummonGhostPlayback(GhostData);
+            }
+        });
+
+        // Let client(s) know that the objective has been started.
+        PS->StartObjective();
+    }
+}
+
+void ATrialsPlayerController::EndObjective(ATrialsObjective* Objective, bool bDeActivate)
+{
+    auto* PS = Cast<ATrialsPlayerState>(PlayerState);
+    if (PS->ActiveObjective == nullptr)
+    {
         return;
     }
 
-    auto* API = GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
-    check(API);
-    API->DownloadGhost(Objective->ObjectiveNetId, Cast<ATrialsPlayerState>(PlayerState)->PlayerNetId, 
-        [this, OnResult](TArray<uint8> Data)
+    if (PS->ActiveObjective == Objective)
+    {
+        if (bDeActivate)
         {
-            UUTGhostData* GhostData = GhostDataSerializer::Serialize(Data);
-            RecordedGhostData = GhostData;
-            OnResult(GhostData);
-        }, 
-        [OnResult]()
-        {
-            OnResult(nullptr);
+            PS->SetActiveObjective(nullptr);
+            ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, Objective);
         }
-    );
+    }
+
+    StopRecordingGhostData();
+    RecordingGhostData = nullptr;
+
+    StopGhostPlayback(false);
+    RecordedGhostData = nullptr;
+    PS->EndObjective();
 }
 
 // FIXME: Camera is locked despite "Free".
 void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
 {
+    StopRecordingGhostData();
+
     // HACK: Temp fix where ghost playback ends immediately if player completed an objective after the ghost has faded out!
     StopGhostPlayback(false);
 

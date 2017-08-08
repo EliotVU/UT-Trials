@@ -65,6 +65,10 @@ class TRIALS_API ATrialsObjective : public AInfo
 
     FString ObjectiveNetId;
 
+    // Current top record's ghost data.
+    UPROPERTY()
+    class UUTGhostData* RecordGhostData;
+
     /* Your local objective time record. */
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
     float DevRecordTime;
@@ -144,10 +148,5 @@ protected:
     /* A PlayerStart for those who have died during this objective. */
     UPROPERTY(EditAnywhere, NoClear, BlueprintReadOnly, Category = Objective)
     AUTPlayerStart* PlayerStart;
-
-
-    // Current top record's ghost data.
-    UPROPERTY()
-    class UUTGhostData* RecordGhostData;
 };
 

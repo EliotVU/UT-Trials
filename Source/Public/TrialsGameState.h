@@ -13,6 +13,9 @@ class ATrialsGameState : public AUTGameState
     UPROPERTY(Replicated, BlueprintReadOnly, Category = Trials, DisplayName = "Objective Targets")
     TArray<ATrialsObjectiveTarget*> Targets;
 
+    UPROPERTY(Replicated)
+    uint32 bAPIAuthenticated : 1;
+
     void AddTarget(ATrialsObjectiveTarget* Obj)
     {
         Targets.AddUnique(Obj);

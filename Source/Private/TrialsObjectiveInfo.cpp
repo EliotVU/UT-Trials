@@ -1,6 +1,5 @@
 #include "Trials.h"
 #include "TrialsObjectiveInfo.h"
-#include "TrialsObjectiveSetMessage.h"
 #include "TrialsPlayerState.h"
 #include "TrialsGameMode.h"
 #include "TrialsAPI.h"
@@ -200,7 +199,7 @@ void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
         checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
 
         auto* API = GetAPI();
-        API->SubmitRecord(Time, ObjectiveNetId, ScorerPS->PlayerNetId, [this, DataObject, API, Time, ScorerPS](const FRecordInfo& RecInfo)
+        API->SubmitRecord(ObjectiveNetId, ScorerPS->PlayerNetId, Time, [this, DataObject, API, Time, ScorerPS](const FRecordInfo& RecInfo)
         {
             // Just incase if the server records were not in sync with the database, so that we don't end overwriting our remotely stored ghost.
             if (DataObject != nullptr && Time <= ATrialsTimerState::RoundTime(RecInfo.Value))
@@ -241,31 +240,7 @@ void ATrialsObjective::ActivateObjective(APlayerController* PC)
         }
     }
 
-    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS->ActiveObjective != this)
-    {
-        TPC->StopGhostPlayback(false);
-
-        PS->SetObjective(this);
-        PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 0, PS, nullptr, this);
-    }
-
-    TPC->StartRecordingGhostData();
-    TPC->FetchObjectiveGhostData(this, [this, TPC, PS](UUTGhostData* GhostData)
-    {
-        // Let's ensure that we don't playback a ghost if player de-activated this objective during this download.
-        if (PS->ActiveObjective && PS->ActiveObjective != this)
-        {
-            return;
-        }
-
-        GhostData = GhostData != nullptr ? GhostData : RecordGhostData;
-        if (GhostData != nullptr)
-        {
-            TPC->SummonGhostPlayback(GhostData);
-        }
-    });
-    PS->StartObjective();
+    TPC->StartObjective(this);
 }
 
 void ATrialsObjective::CompleteObjective(AUTPlayerController* PC)
@@ -286,9 +261,8 @@ void ATrialsObjective::CompleteObjective(AUTPlayerController* PC)
     auto* GM = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
     if (GM != nullptr)
     {
-        TPC->StopRecordingGhostData();
-
         PS->RegisterUnlockedObjective(this);
+
         // Note: End before events
         float Timer = PS->EndObjective();
 
@@ -302,47 +276,31 @@ void ATrialsObjective::DisableObjective(APlayerController* PC, bool bDeActivate 
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr) return;
 
-    // Happens if an objective disables for a player with no set objective!
-    auto* PS = Cast<ATrialsPlayerState>(PC->PlayerState);
-    if (PS->ActiveObjective == this)
+    // Note: We end the objective regardless if this was the objectives' proper exit as an anti cheat measure.
+
+    // Must be checked before calling EndObjective, as EndObjective may change the active objective!
+    //bool IsActiveObjective = Cast<ATrialsPlayerState>(PC->PlayerState)->ActiveObjective == this;
+    TPC->EndObjective(this, bDeActivate);
+
+    // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
+    auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
+    if (Char != nullptr)
     {
-        TPC->StopRecordingGhostData();
-        TPC->RecordingGhostData = nullptr;
+        FTransform Trans = Char->GetTransform();
+        auto Rot = PC->GetControlRotation();
 
-        TPC->StopGhostPlayback(false);
-        TPC->RecordedGhostData = nullptr;
+        auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
+        Char->Reset();
+        PC->SetPawn(nullptr);
+        GameMode->RestartPlayer(PC);
+        // GameMode->RestartPlayerAtTransform(PC, Trans);
 
-        // Do a full reset by giving an entire new Pawn, this should ensure that nothing leaves the level.
-        auto* Char = Cast<AUTCharacter>(PC->GetCharacter());
-        if (Char != nullptr)
+        if (PC->GetPawn())
         {
-            FTransform Trans = Char->GetTransform();
-            auto Rot = PC->GetControlRotation();
-
-            auto* GameMode = GetWorld()->GetAuthGameMode<ATrialsGameMode>();
-            Char->Reset();
-            PC->SetPawn(nullptr);
-            GameMode->RestartPlayer(PC);
-            // GameMode->RestartPlayerAtTransform(PC, Trans);
-
-            if (PC->GetPawn())
-            {
-                PC->GetPawn()->SetActorTransform(Trans);
-                PC->SetControlRotation(Rot);
-            }
-        }
-
-        if (bDeActivate)
-        {
-            PS->SetObjective(nullptr);
-            PC->ClientReceiveLocalizedMessage(UTrialsObjectiveSetMessage::StaticClass(), 1, PS, nullptr, this);
+            PC->GetPawn()->SetActorTransform(Trans);
+            PC->SetControlRotation(Rot);
         }
     }
-    else if (PS->ActiveObjective == nullptr)
-    {
-        return;
-    }
-    PS->EndObjective();
 }
 
 bool ATrialsObjective::IsEnabled(APlayerController* PC)

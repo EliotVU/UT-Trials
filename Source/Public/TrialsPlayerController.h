@@ -66,6 +66,7 @@ public:
         OpenRecordsMenu(FString(), FString());
     }
 
+    void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
     void StartRecordingGhostData();
     void StopRecordingGhostData();
 
@@ -75,10 +76,17 @@ public:
     void OnEndGhostPlayback();
 
     void SummonGhostPlayback(class UUTGhostData* GhostData);
-
     void StopGhostPlayback(bool bDeActivate);
 
-    void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
+    /**
+     * Handles logic for starting an objective, this should never be called directly! See ATrialsObjectiveInfo::ActivateObjective!
+     */
+    void StartObjective(ATrialsObjective* Objective);
+
+    /**
+    * Handles logic for ending an objective, this should never be called directly! See ATrialsObjectiveInfo::DisableObjective!
+    */
+    void EndObjective(ATrialsObjective* Objective, bool bDeActivate);
 
     void ScoredObjective(ATrialsObjective* Objective);
 

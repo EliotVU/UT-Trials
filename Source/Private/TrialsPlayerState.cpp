@@ -46,13 +46,8 @@ float ATrialsPlayerState::EndObjective() const
     return TimerState->EndTimer();
 }
 
-void ATrialsPlayerState::SetObjective(ATrialsObjective* Obj)
+void ATrialsPlayerState::SetActiveObjective(ATrialsObjective* Obj)
 {
-    if (Obj == ActiveObjective)
-    {
-        return;
-    }
-
     ObjectiveRecordTime = 0.0;
     ActiveObjective = Obj;
     ForceNetUpdate();
@@ -68,25 +63,6 @@ void ATrialsPlayerState::SetObjective(ATrialsObjective* Obj)
         TimerState->Objective = Obj;
         TimerState->OwnerRecordTime = 0.0;
         TimerState->ForceNetUpdate();
-
-        // Note: assumes that the activated objective has fetched its info!
-        auto _ObjId = ActiveObjective->ObjectiveNetId;
-
-        auto* API = GetWorld()->GetAuthGameMode<ATrialsGameMode>()->RecordsAPI;
-        API->Fetch(TEXT("api/recs/") + FGenericPlatformHttp::UrlEncode(_ObjId) + TEXT("/") + FGenericPlatformHttp::UrlEncode(PlayerNetId), [this, Obj](const FAPIResult& Data)
-        {
-            // Player may have switched active objective during this request.
-            if (ActiveObjective != Obj)
-            {
-                return;
-            }
-
-            FRecordInfo RecInfo;
-            ATrialsAPI::FromJSON(Data, &RecInfo);
-
-            float RecordTime = RecInfo.Value;
-            UpdateRecordTime(RecordTime);
-        });
     }
 }
 
