@@ -8,7 +8,7 @@ If you really want to try out this plugin, then you'll have to acquire and compi
 
 When is all done and working, proceed by cloning this project and saving it to /UnrealTournament/Plugins/. Compile the project as "Development-Editor", and open STR-Example, and hit play!
 
-# Game Mode
+# Game Modes
 This plugin aims to implement two Trial game modes, STR(Solo Trials) and GTR(Group Trials).
 
 ## STR
