@@ -13,7 +13,9 @@ UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FOb
     AnnouncementDelay = 1.f;
     bIsConsoleMessage = true;
 
-    ObjectiveCompletedText = NSLOCTEXT("Trials", "RecordSet", "{Player1Name} completed {Title} in {Time}");
+    ObjectiveCompletedPrefix = NSLOCTEXT("Trials", "ObjectiveCompletedPrefix", "{Player1Name} completed ");
+    ObjectiveCompletedText = NSLOCTEXT("Trials", "ObjectiveCompletedText", "{Title}");
+    ObjectiveCompletedPostfix = NSLOCTEXT("Trials", "ObjectiveCompletedPostfix", " in {Time}{Stars}");
 
     static ConstructorHelpers::FObjectFinder<USoundBase> RecordSetSoundFinder(TEXT("SoundCue'/Trials/RecordSet.RecordSet'"));
     RecordSetSound = RecordSetSoundFinder.Object;
@@ -21,9 +23,21 @@ UTrialsObjectiveCompleteMessage::UTrialsObjectiveCompleteMessage(const class FOb
     RecordFailedSound = RecordFailedSoundFinder.Object;
 }
 
+void UTrialsObjectiveCompleteMessage::GetEmphasisText(FText& PrefixText, FText& EmphasisText, FText& PostfixText, FLinearColor& EmphasisColor, int32 Switch, class APlayerState* RelatedPlayerState_1, class APlayerState* RelatedPlayerState_2, class UObject* OptionalObject) const
+{
+    bool bTargetsPlayerState1 = RelatedPlayerState_1 && RelatedPlayerState_1->GetOwner() && static_cast<APlayerController*>(RelatedPlayerState_1->GetOwner())->Player;
+    FFormatNamedArguments Args;
+    GetArgs(Args, Switch, bTargetsPlayerState1, RelatedPlayerState_1, RelatedPlayerState_2, OptionalObject);
+    PrefixText = FText::Format(ObjectiveCompletedPrefix, Args);
+    EmphasisText = FText::Format(ObjectiveCompletedText, Args);
+    PostfixText = FText::Format(ObjectiveCompletedPostfix, Args);
+    EmphasisColor = ATrialsTimerState::IdleColor;
+    //Super::GetEmphasisText(PrefixText, EmphasisText, PostfixText, EmphasisColor, Switch, RelatedPlayerState_1, RelatedPlayerState_2, OptionalObject);
+}
+
 FText UTrialsObjectiveCompleteMessage::GetText(int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
 {
-    return ObjectiveCompletedText;
+    return BuildEmphasisText(Switch, RelatedPlayerState_1, RelatedPlayerState_2, OptionalObject);
 }
 
 void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
@@ -34,6 +48,9 @@ void UTrialsObjectiveCompleteMessage::GetArgs(FFormatNamedArguments& Args, int32
         Args.Add("Title", TimerState->Objective->Title);
         float Time = TimerState->GetTimer();
         Args.Add("Time", TimerState->FormatTime(Time));
+
+        FText Stars = FText::FromString(FString().Append(TEXT("***"), TimerState->Objective->CalcStarsCount(Time)));
+        Args.Add("Stars", Stars);
     }
     
     auto* ScorerPS = Cast<ATrialsPlayerState>(RelatedPlayerState_1);

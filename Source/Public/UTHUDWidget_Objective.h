@@ -66,6 +66,9 @@ class TRIALS_API UUTHUDWidget_Objective : public UUTHUDWidget
     FHUDRenderObject_Text RecordText;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
+    FHUDRenderObject_Texture RecordIcon;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
     FHUDRenderObject_Texture TimerBackground;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RenderObject")
@@ -102,4 +105,19 @@ protected:
 
 private:
     float LastDrawnTimer;
+    float EndTickTime;
+    float TickTime;
+    float LastTickTime;
+    float LastRecordTime;
+    float LastRecordChangeTime;
+
+    static float Loopom(float timer, float time, float rate)
+    {
+        if (timer < time + rate*2.0)
+        {
+            float Delta = (timer - time) / rate;
+            return FMath::Loge(2.0)*(Delta > 1.0 ? 1.0 - (Delta - 1.0) : Delta);
+        }
+        return 0.0;
+    }
 };

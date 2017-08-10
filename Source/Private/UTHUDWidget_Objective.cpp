@@ -126,20 +126,34 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
         StatusText.Text = TitleText;
         RenderObj_Text(StatusText);
 
-        FText TimeText = ATrialsTimerState::FormatTime(Obj->RecordTime);
-        RecordText.RenderColor = ATrialsTimerState::LeadColor;
+        if (Obj->RecordTime != LastRecordTime)
+        {
+            LastRecordChangeTime = GetWorld()->TimeSeconds;
+        }
+        LastRecordTime = Obj->RecordTime;
+
+        FText TimeText = Obj->RecordTime != 0.00 
+            ? ATrialsTimerState::FormatTime(Obj->RecordTime) 
+            : FText::FromString(TEXT("--"));
         RecordText.Text = TimeText;
-        RenderObj_Text(RecordText);
+
+        float Scaler = Loopom(GetWorld()->TimeSeconds, LastRecordChangeTime, 0.18);
+        RecordText.RenderColor = ATrialsTimerState::LeadColor*(1.0 - Scaler) + FLinearColor::White*Scaler;
+        RecordText.TextScale = 1.0 + 0.15*Scaler;
+
+        float XL, YL;
+        Canvas->TextSize(RecordText.Font, RecordText.Text.ToString(), XL, YL, 1.0, 1.0);
+        RenderObj_Text(RecordText, FVector2D((XL*RecordText.TextScale - XL)*0.5, (YL - YL*RecordText.TextScale)*0.5));
+        RenderObj_Texture(RecordIcon);
     }
 
     auto* TimerState = ViewingPlayerState->TimerState;
     if (Obj != nullptr && TimerState != nullptr)
     {
-        bool IsActive = TimerState->State == TS_Active;
-
         float RecordTime = TimerState->GetRecordTime();
-        float Timer = TimerState->GetRemainingTime();
+        float Timer = RecordTime == 0.00 ? TimerState->GetTimer() : TimerState->GetRemainingTime();
 
+        bool IsActive = TimerState->State == TS_Active;
         FLinearColor TimerColor = !IsActive
             ? ATrialsTimerState::IdleColor
             : ATrialsTimerState::GetTimerColor(Timer);
@@ -147,16 +161,15 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
         FText TimeText = ATrialsTimerState::FormatTime(IsActive ? Timer : RecordTime);
 
         AnimationAlpha += (DeltaTime * 3);
+        float Alpha = FMath::Abs<float>(FMath::Sin(AnimationAlpha));
 
-        float Alpha = FMath::Sin(AnimationAlpha);
-        Alpha = FMath::Abs<float>(Alpha);
+        float WorldTime = GetWorld()->TimeSeconds;
+        float Scaler = Loopom(WorldTime, TimerState->StateChangeTime, 0.1)
+            + Loopom(WorldTime, EndTickTime, 0.05)*2.0
+            + Loopom(WorldTime, TickTime, 0.05)*1.5 
+            + Loopom(WorldTime, LastTickTime, 0.05)*1.2;
 
-        TimerText.RenderColor = TimerColor;
-        TimerText.RenderOpacity = Alpha;
-        TimerText.Text = TimeText;
-        RenderObj_Text(TimerText);
-
-        if (IsActive)
+        if (IsActive && RecordTime != 0.00)
         {
             // HACK: + 1 to distinguish from -0.99 +0.99, both are rounded to 0.
             bool bTick = Timer < 10.0f && static_cast<int32>(LastDrawnTimer + 1) != static_cast<int32>(Timer + 1);
@@ -164,19 +177,32 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
             {
                 if (Timer < 0.0f && static_cast<int32>(Timer) == 0)
                 {
+                    EndTickTime = WorldTime;
                     UGameplayStatics::PlaySound2D(GetWorld(), EndTickSound, 3.5f, 1.0f, 0.0f);
                 }
                 else if (Timer > 0.0f)
                 {
+                    TickTime = WorldTime;
                     UGameplayStatics::PlaySound2D(GetWorld(), TickSound, 1.5f, 20.0f / Timer, 0.0f);
                 }
             }
+            LastTickTime = WorldTime;
             LastDrawnTimer = Timer;
         }
+
+        TimerText.RenderColor = TimerColor;
+        TimerText.RenderOpacity = Alpha;
+        TimerText.TextScale = 1.0 + (0.1*Scaler);
+        TimerText.Text = TimeText;
+
+        float XL, YL;
+        Canvas->TextSize(TimerText.Font, TEXT("T"), XL, YL, 1.0, 1.0);
+        RenderObj_Text(TimerText, FVector2D(0.0, (YL - YL*TimerText.TextScale)*0.5));
     }
     else
     {
         AnimationAlpha = 0.0;
+        LastDrawnTimer = 0;
     }
 }
 
@@ -257,7 +283,7 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
                 {
                     bool IsActive = TimerState->State == TS_Active;
                     float RecordTime = TimerState->GetRecordTime();
-                    float Timer = TimerState->GetRemainingTime();
+                    float Timer = RecordTime == 0? TimerState->GetTimer() : TimerState->GetRemainingTime();
 
                     FLinearColor TimerColor = IsActive
                         ? ATrialsTimerState::GetTimerColor(Timer)

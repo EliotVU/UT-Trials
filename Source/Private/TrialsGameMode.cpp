@@ -187,6 +187,7 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
 void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Player)
 {
     auto* PlayerState = Cast<ATrialsPlayerState>(Player->PlayerState);
+    PlayerState->AdjustScore(1);
     Cast<ATrialsPlayerController>(Player)->ScoredObjective(Obj); // note: don't call after ScoreRecord!
     OnObjectiveCompleted.Broadcast(Obj, Player);
 

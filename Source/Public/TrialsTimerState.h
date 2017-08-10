@@ -23,6 +23,8 @@ class ATrialsTimerState : public AInfo
     UPROPERTY(ReplicatedUsing = OnRep_State, BlueprintReadOnly)
     TEnumAsByte<enum ETimerState> State;
 
+    float StateChangeTime;
+
     // The record time when this timer was started
     float EndRecordTime; 
 
@@ -59,6 +61,7 @@ class ATrialsTimerState : public AInfo
     static const FLinearColor ActiveColor;
     static const FLinearColor IdleColor;
     static const FLinearColor PositiveColor;
+    static const FLinearColor TieColor;
     static const FLinearColor NegativeColor;
 
     void Tick(float DeltaTime) override
@@ -80,4 +83,6 @@ class ATrialsTimerState : public AInfo
 private:
     float StartTime;
     float EndTime;
+
+    void SetState(TEnumAsByte<enum ETimerState> NewState);
 };

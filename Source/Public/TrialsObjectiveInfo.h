@@ -69,9 +69,14 @@ class TRIALS_API ATrialsObjective : public AInfo
     UPROPERTY()
     class UUTGhostData* RecordGhostData;
 
-    /* Your local objective time record. */
     UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
-    float DevRecordTime;
+    float GoldMedalTime;
+
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
+    float SilverMedalTime;
+
+    UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = Record)
+    float BronzeMedalTime;
 
     UPROPERTY(Replicated)
     TArray<FRecordInfo> TopRecords;
@@ -88,6 +93,7 @@ class TRIALS_API ATrialsObjective : public AInfo
     void BeginPlay() override;
 
     void UpdateRecordState(FString& MapName);
+    int32 CalcStarsCount(float Time) const;
     void ScoreRecord(float Record, AUTPlayerController* PC);
 
     /**
@@ -130,7 +136,7 @@ class TRIALS_API ATrialsObjective : public AInfo
 
     virtual void SetLocked(bool bIsLocked);
 
-    /* Fired when this objective has been completed. Fired by CompleteObjective()*/
+    /* Fired locally when bLockedLocale has changed. Or on authority owner if the objective will be locked initially!*/
     UPROPERTY(BlueprintAssignable, Category = Objective)
     FObjectiveLockChange OnLockedChange;
 

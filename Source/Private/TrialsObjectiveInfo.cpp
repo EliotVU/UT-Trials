@@ -43,7 +43,7 @@ ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitial
     {
         if (GetSpriteComponent())
         {
-            ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteObject(TEXT("/Engine/Tutorial/Paper2D/TutorialAssets/Paper2DSprite_TutorialIcon.Paper2DSprite_TutorialIcon"));
+            ConstructorHelpers::FObjectFinderOptional<UTexture2D> SpriteObject(TEXT("/Trials/HUD/SPRITE_Objective.SPRITE_Objective"));
             GetSpriteComponent()->Sprite = SpriteObject.Get();
             GetSpriteComponent()->SetupAttachment(RootComponent);
         }
@@ -106,7 +106,6 @@ void ATrialsObjective::BeginPlay()
         return;
     }
 
-    RecordTime = DevRecordTime;
     if (PlayerStart != nullptr)
     {
         PlayerStart->bIgnoreInNonTeamGame = true; // Disable default spawning.
@@ -143,7 +142,7 @@ void ATrialsObjective::UpdateRecordState(FString& MapName)
         TopRecords = ObjInfo.Records;
 
         float OldTime = RecordTime;
-        float Time = ObjInfo.RecordTime > 0.f ? ObjInfo.RecordTime : DevRecordTime;
+        float Time = ObjInfo.RecordTime;
         RecordTime = ATrialsTimerState::RoundTime(Time);
 
         // TODO: Implement
@@ -173,12 +172,33 @@ void ATrialsObjective::UpdateRecordState(FString& MapName)
     });
 }
 
+int32 ATrialsObjective::CalcStarsCount(float Time) const
+{
+    if (Time <= GoldMedalTime)
+    {
+        return 3;
+    }
+    if (Time <= SilverMedalTime)
+    {
+        return 2;
+    }
+    if (Time <= BronzeMedalTime)
+    {
+        return 1;
+    }
+    return 0;
+}
+
 // TODO: Move to GameMode.
 void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
+    if (TPC == nullptr)
+    {
+        return;
+    }
 
-    bool IsTopRecord = Time < RecordTime;
+    bool IsTopRecord = Time < RecordTime || RecordTime <= 0.00;
     if (IsTopRecord)
     {
         RecordGhostData = TPC->RecordingGhostData;
@@ -186,6 +206,8 @@ void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
     }
 
     auto* ScorerPS = Cast<ATrialsPlayerState>(TPC->PlayerState);
+    int32 NumStars = CalcStarsCount(Time);
+    ScorerPS->AdjustScore(NumStars);
     ScorerPS->UpdateRecordTime(Time);
     OnRecordScored.Broadcast(TPC, Time, IsTopRecord);
 

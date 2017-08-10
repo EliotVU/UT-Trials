@@ -5,9 +5,10 @@
 #include "UnrealNetwork.h"
 
 const FLinearColor ATrialsTimerState::LeadColor = FLinearColor(0.1, 0.8, 0.8);
-const FLinearColor ATrialsTimerState::ActiveColor = FLinearColor(0.9, 0.9, 0.0);
-const FLinearColor ATrialsTimerState::IdleColor = FLinearColor(0.8, 0.8, 0.0);
+const FLinearColor ATrialsTimerState::ActiveColor = FLinearColor(0.9, 0.9, 0.1);
+const FLinearColor ATrialsTimerState::IdleColor = FLinearColor(0.8, 0.8, 0.1);
 const FLinearColor ATrialsTimerState::PositiveColor = FLinearColor(0.1, 0.8, 0.1);
+const FLinearColor ATrialsTimerState::TieColor = FLinearColor(0.1, 0.1, 0.1);
 const FLinearColor ATrialsTimerState::NegativeColor = FLinearColor(0.8, 0.1, 0.1);
 
 ATrialsTimerState::ATrialsTimerState(const FObjectInitializer& ObjectInitializer)
@@ -79,14 +80,15 @@ float ATrialsTimerState::StartTimer()
         StartTime = GetWorld()->RealTimeSeconds;
     }
     EndTime = 0.00;
-    State = TS_Active;
+    SetState(TS_Active);
     ForceNetUpdate();
     return RoundTime(StartTime);
 }
 
 float ATrialsTimerState::StopTimer()
 {
-    State = TS_Idle;
+    SetState(TS_Idle);
+
     EndTime = GetWorld()->RealTimeSeconds;
     ForceNetUpdate();
     return RoundTime(EndTime);
@@ -98,7 +100,7 @@ float ATrialsTimerState::EndTimer()
     State = TS_Idle;
     EndRecordTime = GetRecordTime();
 
-    State = TS_Complete;
+    SetState(TS_Complete);
     EndTime = GetWorld()->RealTimeSeconds;
     ForceNetUpdate();
     return RoundTime(EndTime - StartTime);
@@ -118,26 +120,30 @@ FText ATrialsTimerState::FormatTime(const float Value)
     minutes = minutes - (hours * 60);
 
     FString secondsString = FString::Printf(TEXT("%f"), seconds);
-    secondsString = secondsString.Left(secondsString.Find(".") + 4).Append("s");
+    secondsString = secondsString.Left(secondsString.Find(".") + 4);
     if (minutes != 0 && seconds < 10.f)
+    {
         secondsString = TEXT("0") + secondsString;
-
-    FString minutesString = (hours != 0 && minutes < 10)
-                                ? TEXT("0") + minutes
-                                : FString::FromInt(minutes);
-
-    FString hoursString = FString::FromInt(hours);
+    }
 
     FString output;
     if (hours != 0)
-        output = hoursString + TEXT("h ");
+    {
+        FString hoursString = FString::FromInt(hours);
+        output = hoursString + TEXT(":");
+    }
 
     if (minutes != 0)
-        output += minutesString + TEXT("m ");
+    {
+        FString minutesString = (hours != 0 && minutes < 10)
+            ? TEXT("0") + minutes
+            : FString::FromInt(minutes);
+        output += minutesString + TEXT(":");
+    }
 
     output = Value < 0
-                 ? TEXT("-") + output + secondsString
-                 : output + secondsString;
+        ? TEXT("-") + output + secondsString
+        : output + secondsString;
     return FText::FromString(output);
 }
 
@@ -155,4 +161,16 @@ void ATrialsTimerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
     DOREPLIFETIME(ATrialsTimerState, Objective);
     DOREPLIFETIME(ATrialsTimerState, State);
     DOREPLIFETIME(ATrialsTimerState, OwnerRecordTime);
+}
+
+void ATrialsTimerState::SetState(TEnumAsByte<ETimerState> NewState)
+{
+    if (State == NewState)
+    {
+        return;
+    }
+    StateChangeTime = GetWorld()->TimeSeconds;
+    State = NewState;
+
+    // TODO: Emit blueprint event for local clients.
 }

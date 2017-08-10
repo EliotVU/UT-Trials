@@ -24,17 +24,21 @@ FLinearColor UTrialsRecordSetMessage::GetMessageColor_Implementation(int32 Switc
 {
     switch (Switch)
     {
-        // Top Record
+        // Top record
     case 0:
         return ATrialsTimerState::LeadColor;
 
-        // Personal Record
-        // FIXME: case 3 may render positive even if the time is negative (first personal record)
-    case 3: case 4:
+        // top or personal record
+    case 3: 
+    case 4:
         return ATrialsTimerState::PositiveColor;
 
-        // Failed
-    case 1: case 2:
+        // tie, top or personal
+    case 1: 
+        return ATrialsTimerState::TieColor;
+        
+        // Negative, top and personal.
+    case 2:
         return ATrialsTimerState::NegativeColor;
 
     }
@@ -46,9 +50,12 @@ void UTrialsRecordSetMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch,
     auto* TimerState = Cast<ATrialsTimerState>(OptionalObject);
     if (TimerState != nullptr)
     {
-        float TimeDiff = TimerState->GetRemainingTime();
+        bool bShouldCountUp = (Switch == 3 || TimerState->GetRecordTime() == 0.00);
+        float TimeDiff = bShouldCountUp
+            ? TimerState->GetTimer() 
+            : TimerState->GetRemainingTime();
         FString TimeDiffStr = TimerState->FormatTime(TimeDiff).ToString();
-        if (TimeDiff > 0.0)
+        if (TimeDiff > 0.0 && !bShouldCountUp)
         {
             TimeDiffStr = "+" + TimeDiffStr;
         }

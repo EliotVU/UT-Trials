@@ -38,19 +38,36 @@ void UUTHUDWidget_ObjectiveStats::Draw_Implementation(float DeltaTime)
         }
 
         FRecordInfo RecInfo;
-        if (i == 0)
+        float Timer = OwnerPS->TimerState ? (OwnerPS->TimerState->State == TS_Active ? OwnerPS->TimerState->GetTimer() : OwnerPS->ObjectiveRecordTime) : 0.00;
+        if (i == 0 && Timer <= Target->BronzeMedalTime)
         {
-            RecInfo.Value = Target->DevRecordTime;
-            RecInfo.Player.Name = TEXT("Developer");
+            if (Timer <= Target->GoldMedalTime)
+            {
+                RecInfo.Value = Target->GoldMedalTime;
+                RecInfo.Player.Name = TEXT("Gold");
+            }
+            else if (Timer <= Target->SilverMedalTime)
+            {
+                RecInfo.Value = Target->SilverMedalTime;
+                RecInfo.Player.Name = TEXT("Silver");
+            }
+            else if (Timer <= Target->BronzeMedalTime)
+            {
+                RecInfo.Value = Target->BronzeMedalTime;
+                RecInfo.Player.Name = TEXT("Bronze");
+            }
             TimeTextItem.RenderColor = ATrialsTimerState::LeadColor;
             DrawRecordItem(RecInfo, 0);
             i = 1;
         }
 
-        RecInfo.Value = OwnerPS->ObjectiveRecordTime;
+        bool bShowPlayerRecord = (OwnerPS->ObjectiveRecordTime != 00.00 || OwnerPS->TimerState == nullptr || OwnerPS->TimerState->State != TS_Active);
+        RecInfo.Value = bShowPlayerRecord
+            ? OwnerPS->ObjectiveRecordTime 
+            : OwnerPS->TimerState->GetTimer();
         RecInfo.Player.Name = ViewedPawn == UTCharacterOwner ? TEXT("You") : OwnerPS->PlayerName;
         PlayerTextItem.RenderColor = FLinearColor::White;
-        TimeTextItem.RenderColor = ATrialsTimerState::IdleColor;
+        TimeTextItem.RenderColor = bShowPlayerRecord ? ATrialsTimerState::IdleColor : ATrialsTimerState::GetTimerColor(RecInfo.Value);
         DrawRecordItem(RecInfo, static_cast<float>(i), ItemPaddingY);
     }
 }
@@ -66,7 +83,7 @@ void UUTHUDWidget_ObjectiveStats::DrawRecordItem(FRecordInfo& RecInfo, float Ind
     PlayerTextItem.Text = PlayerText;
     RenderObj_Text(PlayerTextItem, FVector2D(0, Y));
 
-    FText TimeText = RecInfo.Value != 0.0 ? ATrialsTimerState::FormatTime(RecInfo.Value) : FText::FromString(TEXT("N/A"));
+    FText TimeText = RecInfo.Value != 0.0 ? ATrialsTimerState::FormatTime(RecInfo.Value) : FText::FromString(TEXT("--"));
     TimeTextItem.Text = TimeText;
     RenderObj_Text(TimeTextItem, FVector2D(0, Y));
 }
