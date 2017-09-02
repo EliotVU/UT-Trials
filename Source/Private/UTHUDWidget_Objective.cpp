@@ -49,7 +49,7 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
 
     if (Cast<ATrialsPlayerController>(UTPlayerOwner) != nullptr)
     {
-        if (UTPlayerOwner->GetCharacter() == nullptr && static_cast<ATrialsPlayerController*>(UTPlayerOwner)->bHasScoredReplayData)
+        if (UTCharacterOwner == nullptr && static_cast<ATrialsPlayerController*>(UTPlayerOwner)->bHasScoredReplayData)
         {
             FText RequestRestartLabel = UTHUDOwner->FindKeyMappingTo("RequestRestart");
             FText& RallyLabel = UTHUDOwner->RallyLabel;
@@ -58,14 +58,40 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
             Args.Add(TEXT("keybind"), RequestRestartLabel.ToString() == TEXT("<none>") ? RallyLabel : RequestRestartLabel);
 
             FHUDRenderObject_Text ReplayText;
+            ReplayText.bHidden = false; // where the fuck is this set to TRUE?
             ReplayText.Font = TimerText.Font;
+
             ReplayText.Text = FText::Format(FText::FromString(TEXT("(Press [{keybind}] to view Replay)")), Args);
             ReplayText.Position.X = 0.5;
             ReplayText.Position.Y = 0.2;
             ReplayText.HorzPosition = ETextHorzPos::Center;
-            ReplayText.bHidden = false; // where the fuck is this set to TRUE?
             RenderObj_Text(ReplayText);
             return;
+        }
+        
+        if (UTCharacterOwner)
+        {
+            FHUDRenderObject_Text ResetText;
+            ResetText.bHidden = false;
+            ResetText.Font = TimerText.Font;
+
+            float ResetTime = UTCharacterOwner->UTCharacterMovement->DodgeResetTime - UTCharacterOwner->UTCharacterMovement->GetCurrentMovementTime();
+            if (ResetTime > -1.0)
+            {
+                if (UTCharacterOwner->UTCharacterMovement->bIsDodging)
+                {
+                    ResetText.RenderColor = FLinearColor::Gray;
+                }
+                else if (ResetTime <= 0.0)
+                {
+                    ResetText.RenderColor = FLinearColor::Green;
+                }
+                ResetText.Text = ATrialsTimerState::FormatTime(ResetTime);
+                ResetText.Position.X = 0.5;
+                ResetText.Position.Y = 1080;
+                ResetText.HorzPosition = ETextHorzPos::Center;
+                RenderObj_Text(ResetText);
+            }
         }
     }
 
