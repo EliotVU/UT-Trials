@@ -149,6 +149,18 @@ public:
     float RecordTime;
 
     UPROPERTY()
+    float AvgRecordTime;
+
+    UPROPERTY()
+    float GoldMedalTime;
+
+    UPROPERTY()
+    float SilverMedalTime;
+    
+    UPROPERTY()
+    float BronzeMedalTime;
+
+    UPROPERTY()
     TArray<FRecordInfo> Records;
 
     FObjInfo() : RecordTime(0.f) {}

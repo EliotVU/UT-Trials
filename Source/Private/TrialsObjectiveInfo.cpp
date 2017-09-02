@@ -144,19 +144,25 @@ void ATrialsObjective::UpdateRecordState(FString& MapName)
         float OldTime = RecordTime;
         float Time = ObjInfo.RecordTime;
         RecordTime = ATrialsTimerState::RoundTime(Time);
-
-        // TODO: Implement
-        AvgRecordTime = ATrialsTimerState::RoundTime(Time);
+        AvgRecordTime = ATrialsTimerState::RoundTime(ObjInfo.AvgRecordTime);
 
         bCanSubmitRecords = true;
 
-        bool bHasMetaDataChanged = ObjInfo.Title != Title.ToString() || ObjInfo.Description != Description.ToString();
+        bool bHasMetaDataChanged = ObjInfo.Title != Title.ToString() 
+            || ObjInfo.Description != Description.ToString()
+            || ObjInfo.GoldMedalTime != GoldMedalTime
+            || ObjInfo.SilverMedalTime != SilverMedalTime
+            || ObjInfo.BronzeMedalTime != BronzeMedalTime
+        ;
         if (bHasMetaDataChanged)
         {
             FObjInfo ObjData;
             ObjData._id = ObjectiveNetId;
             ObjData.Title = Title.ToString();
             ObjData.Description = Description.ToString();
+            ObjData.GoldMedalTime = GoldMedalTime;
+            ObjData.SilverMedalTime = SilverMedalTime;
+            ObjData.BronzeMedalTime = BronzeMedalTime;
             API->UpdateObj(ObjData);
         }
 
