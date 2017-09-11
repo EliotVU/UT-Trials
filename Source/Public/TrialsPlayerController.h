@@ -7,6 +7,19 @@
 
 class STrialsRecordsMenu;
 
+USTRUCT()
+struct FCheckpointData
+{
+    GENERATED_USTRUCT_BODY()
+
+public:
+    UPROPERTY()
+    int32 Health;
+
+    UPROPERTY()
+    int32 Armor;
+};
+
 UCLASS()
 class ATrialsPlayerController : public AUTPlayerController
 {
@@ -56,14 +69,20 @@ public:
             return;
         }
         RecordsMenu = SNew(STrialsRecordsMenu)
-            .PlayerOwner(GetUTLocalPlayer());
+            .PlayerOwner(GetUTLocalPlayer())
+            .MapName(MapName)
+            .ObjName(ObjName);
         GEngine->GameViewport->AddViewportWidgetContent(RecordsMenu.ToSharedRef());
     }
 
     UFUNCTION(Exec)
     void ShowRecords()
     {
-        OpenRecordsMenu(FString(), FString());
+        if (!Cast<ATrialsPlayerState>(PlayerState)->ActiveObjective)
+        {
+            return;
+        }
+        OpenRecordsMenu(GetWorld()->GetMapName(), Cast<ATrialsPlayerState>(PlayerState)->ActiveObjective->RecordId);
     }
 
     void FetchObjectiveGhostData(ATrialsObjective* Objective, const TFunction<void(class UUTGhostData* GhostData)> OnResult);
@@ -89,6 +108,17 @@ public:
     void EndObjective(ATrialsObjective* Objective, bool bDeActivate);
 
     void ScoredObjective(ATrialsObjective* Objective);
+
+    UPROPERTY(BlueprintReadOnly, Category = Checkpoint)
+    AActor* CheckpointDest;
+
+    UPROPERTY()
+    FCheckpointData CheckpointData;
+
+    UFUNCTION(BlueprintCallable, Category = Checkpoint)
+    void SetCheckpoint(AActor* Dest);
+
+    void UseCheckpoint(AUTCharacter* NewChar);
 
 private:
     FTimerHandle ViewGhostPlaybackTimerHandle;

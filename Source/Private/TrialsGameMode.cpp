@@ -107,14 +107,21 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
 
 void ATrialsGameMode::SetPlayerDefaults(APawn* PlayerPawn)
 {
-    auto* Char = Cast<ACharacter>(PlayerPawn);
-    if (Char)
+    //PlayerPawn->bCanBeDamaged = false;
+    Super::SetPlayerDefaults(PlayerPawn);
+
+    auto* Char = Cast<AUTCharacter>(PlayerPawn);
+    if (Char != nullptr)
     {
         Char->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
+        auto* PC = Cast<ATrialsPlayerController>(Char->GetController());
+        if (PC != nullptr && PC->CheckpointDest != nullptr)
+        {
+            PC->UseCheckpoint(Char);
+        }
+
     }
-    //PlayerPawn->bCanBeDamaged = false;
-    Super::SetPlayerDefaults(PlayerPawn);
 }
 
 bool ATrialsGameMode::AllowSuicideBy(AUTPlayerController* PC)
@@ -161,15 +168,20 @@ AActor* ATrialsGameMode::ChoosePlayerStart_Implementation(AController* Player)
 AActor* ATrialsGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
     const auto* PS = Cast<ATrialsPlayerState>(Player->PlayerState);
-
-    // Prefer HUB spawns(a PlayerStart with PlayerStartTag=HUB) if player has unlocked any objectives.
-    const FString& NewIncomingName = IncomingName.IsEmpty() && PS->UnlockedObjectives.Num() > 0 ? TEXT("HUB") : IncomingName;
-
     if (PS->ActiveObjective != nullptr)
     {
+        auto* PC = Cast<ATrialsPlayerController>(Player);
+        AActor* StartSpot = PC->CheckpointDest;
+        if (StartSpot)
+        {
+            return StartSpot;
+        }
         return PS->ActiveObjective->GetPlayerSpawn(Player);
     }
+
     // Otherwise use any playerstart but those with a tag.
+    // Prefer HUB spawns(a PlayerStart with PlayerStartTag=HUB) if player has unlocked any objectives.
+    const FString& NewIncomingName = IncomingName.IsEmpty() && PS->UnlockedObjectives.Num() > 0 ? TEXT("HUB") : IncomingName;
     return Super::FindPlayerStart_Implementation(Player, NewIncomingName);
 }
 
@@ -184,12 +196,24 @@ void ATrialsGameMode::DiscardInventory(APawn* Other, AController* Killer)
     }
 }
 
+const uint32 RECORDFLAG_CHECKPOINT = 0x01;
+
 void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AUTPlayerController* Player)
 {
     auto* PlayerState = Cast<ATrialsPlayerState>(Player->PlayerState);
     PlayerState->AdjustScore(1);
-    Cast<ATrialsPlayerController>(Player)->ScoredObjective(Obj); // note: don't call after ScoreRecord!
+
+    auto* PC = Cast<ATrialsPlayerController>(Player);
+    bool bUsedCheckpoint = PC->CheckpointDest != nullptr;
+
+    PC->ScoredObjective(Obj); // note: don't call after ScoreRecord!
     OnObjectiveCompleted.Broadcast(Obj, Player);
+
+    FRecordInfo RecordInfo(Timer, PlayerState->PlayerNetId);
+    if (bUsedCheckpoint)
+    {
+        RecordInfo.Flags |= RECORDFLAG_CHECKPOINT;
+    }
 
     int32 RecordSwitch;
     float RecordTime = Obj->RecordTime;
@@ -197,7 +221,7 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
     {
         // New top record!
         RecordSwitch = 0;
-        Obj->ScoreRecord(Timer, Player);
+        Obj->ScoreRecord(RecordInfo, Player);
     }
     else if (Timer == RecordTime) // Tied with all time
     {
@@ -211,12 +235,12 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
         if (RecordTime == 0.00)
         {
             RecordSwitch = 3;
-            Obj->ScoreRecord(Timer, Player);
+            Obj->ScoreRecord(RecordInfo, Player);
         }
         else if (Timer < RecordTime)
         {
             RecordSwitch = 4;
-            Obj->ScoreRecord(Timer, Player);
+            Obj->ScoreRecord(RecordInfo, Player);
         }
         else if (Timer == RecordTime)
         {

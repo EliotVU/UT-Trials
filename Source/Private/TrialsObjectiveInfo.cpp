@@ -196,7 +196,7 @@ int32 ATrialsObjective::CalcStarsCount(float Time) const
 }
 
 // TODO: Move to GameMode.
-void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
+void ATrialsObjective::ScoreRecord(FRecordInfo& RecordInfo, AUTPlayerController* PC)
 {
     auto* TPC = Cast<ATrialsPlayerController>(PC);
     if (TPC == nullptr)
@@ -204,18 +204,18 @@ void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
         return;
     }
 
-    bool IsTopRecord = Time < RecordTime || RecordTime <= 0.00;
+    bool IsTopRecord = RecordInfo.Value < RecordTime || RecordTime <= 0.00;
     if (IsTopRecord)
     {
         RecordGhostData = TPC->RecordingGhostData;
-        RecordTime = Time;
+        RecordTime = RecordInfo.Value;
     }
 
     auto* ScorerPS = Cast<ATrialsPlayerState>(TPC->PlayerState);
-    int32 NumStars = CalcStarsCount(Time);
+    int32 NumStars = CalcStarsCount(RecordInfo.Value);
     ScorerPS->AdjustScore(NumStars);
-    ScorerPS->UpdateRecordTime(Time);
-    OnRecordScored.Broadcast(TPC, Time, IsTopRecord);
+    ScorerPS->UpdateRecordTime(RecordInfo.Value);
+    OnRecordScored.Broadcast(TPC, RecordInfo.Value, IsTopRecord);
 
     auto* DataObject = TPC->RecordingGhostData;
     TPC->RecordedGhostData = DataObject;
@@ -227,10 +227,10 @@ void ATrialsObjective::ScoreRecord(float Time, AUTPlayerController* PC)
         checkSlow(!ScorerPS->PlayerNetId.IsEmpty())
 
         auto* API = GetAPI();
-        API->SubmitRecord(ObjectiveNetId, ScorerPS->PlayerNetId, Time, [this, DataObject, API, Time, ScorerPS](const FRecordInfo& RecInfo)
+        API->SubmitRecord(ObjectiveNetId, RecordInfo, [this, DataObject, API, RecordInfo, ScorerPS](const FRecordInfo& RecInfo)
         {
             // Just incase if the server records were not in sync with the database, so that we don't end overwriting our remotely stored ghost.
-            if (DataObject != nullptr && Time <= ATrialsTimerState::RoundTime(RecInfo.Value))
+            if (DataObject != nullptr && RecordInfo.Value <= ATrialsTimerState::RoundTime(RecInfo.Value))
             {
                 TArray<uint8> ObjectBytes = GhostDataSerializer::Serialize(DataObject);
                 API->SubmitGhost(ObjectBytes, ObjectiveNetId, ScorerPS->PlayerNetId);

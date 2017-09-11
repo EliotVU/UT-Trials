@@ -266,14 +266,13 @@ public:
         );
     }
 
-    void SubmitRecord(const FString& ObjId, const FString& PlayerId, const float Value, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
+    void SubmitRecord(const FString& ObjId, FRecordInfo& RecordInfo, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
     {
         checkSlow(!ObjId.IsEmpty());
         checkSlow(!PlayerId.IsEmpty());
         
-        FRecordInfo RecInfo(Value, PlayerId);
         Post(TEXT("api/recs/") 
-            + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecInfo), 
+            + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecordInfo),
             [OnSuccess](const FAPIResult Result) {
                 FRecordInfo RecInfo;
                 FromJSON(Result, &RecInfo);

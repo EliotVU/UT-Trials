@@ -90,6 +90,8 @@ void ATrialsPlayerController::ServerRequestRestart_Implementation()
         bHasScoredReplayData = false;
         return;
     }
+
+    SetCheckpoint(nullptr);
     ServerSuicide();
 }
 
@@ -243,6 +245,8 @@ void ATrialsPlayerController::StartObjective(ATrialsObjective* Objective)
 
     if (Objective != nullptr)
     {
+        SetCheckpoint(nullptr);
+
         StartRecordingGhostData();
         FetchObjectiveGhostData(Objective, [this, Objective, PS](UUTGhostData* GhostData)
         {
@@ -281,6 +285,8 @@ void ATrialsPlayerController::EndObjective(ATrialsObjective* Objective, bool bDe
         }
     }
 
+    SetCheckpoint(nullptr);
+
     StopRecordingGhostData();
     RecordingGhostData = nullptr;
 
@@ -292,6 +298,7 @@ void ATrialsPlayerController::EndObjective(ATrialsObjective* Objective, bool bDe
 // FIXME: Camera is locked despite "Free".
 void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
 {
+    SetCheckpoint(nullptr);
     StopRecordingGhostData();
 
     // HACK: Temp fix where ghost playback ends immediately if player completed an objective after the ghost has faded out!
@@ -363,6 +370,49 @@ void ATrialsPlayerController::ScoredObjective(ATrialsObjective* Objective)
         UE_LOG(UT, Warning, TEXT("ViewGhostPlaybackTimerHandle is already running!!!"));
     }
     GetWorldTimerManager().SetTimer(ViewGhostPlaybackTimerHandle, TimerCallback, 2.0, false);
+}
+
+FName Name_CheckpointSets(TEXT("TRIALS_CheckpointSets"));
+FName Name_CheckpointUses(TEXT("TRIALS_CheckpointUses"));
+
+void ATrialsPlayerController::SetCheckpoint(AActor* Dest)
+{
+    if (Dest == nullptr)
+    {
+        CheckpointDest = nullptr;
+        return;
+    }
+
+    if (Cast<ATrialsPlayerState>(UTPlayerState)->ActiveObjective == nullptr)
+    {
+        return;
+    }
+
+    auto* UTC = GetUTCharacter();
+    if (UTC == nullptr)
+    {
+        return;
+    }
+
+    CheckpointData.Health = UTC->Health;
+    CheckpointData.Armor = UTC->GetArmorAmount();
+    if (CheckpointDest != Dest)
+    {
+        CheckpointDest = Dest;
+        UTPlayerState->ModifyStat(Name_CheckpointSets, 1, EStatMod::Type::Delta);
+    }
+}
+
+void ATrialsPlayerController::UseCheckpoint(AUTCharacter* NewChar)
+{
+    if (CheckpointDest == nullptr || Cast<ATrialsPlayerState>(UTPlayerState)->ActiveObjective == nullptr)
+    {
+        return;
+    }
+
+    NewChar->Health = CheckpointData.Health;
+    NewChar->SetArmorAmount(NewChar->ArmorType, CheckpointData.Armor);
+    UTPlayerState->ModifyStat(Name_CheckpointUses, 1, EStatMod::Type::Delta);
 }
 
 void ATrialsPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

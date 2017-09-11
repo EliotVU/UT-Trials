@@ -94,7 +94,7 @@ class TRIALS_API ATrialsObjective : public AInfo
 
     void UpdateRecordState(FString& MapName);
     int32 CalcStarsCount(float Time) const;
-    void ScoreRecord(float Record, AUTPlayerController* PC);
+    void ScoreRecord(FRecordInfo& RecordInfo, AUTPlayerController* PC);
 
     /**
      * Broadcasts when a player has set a new/improved personal or top record.
