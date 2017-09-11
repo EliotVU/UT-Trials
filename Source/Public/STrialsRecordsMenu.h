@@ -10,7 +10,8 @@ class TRIALS_API STrialsRecordsMenu : public SCompoundWidget
     {}
 
     SLATE_ARGUMENT(UUTLocalPlayer*, PlayerOwner)
-
+    SLATE_ARGUMENT(FString, MapName)
+    SLATE_ARGUMENT(FString, ObjName)
     SLATE_END_ARGS()
 
 public:

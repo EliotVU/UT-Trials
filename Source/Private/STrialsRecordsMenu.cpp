@@ -13,7 +13,7 @@ void STrialsRecordsMenu::Construct(const FArguments& InArgs)
     SAssignNew(RecordsWebBrowser, SWebBrowser)
         .ShowControls(false)
         .ShowAddressBar(false)
-        .InitialURL(TEXT("http://localhost:8080/"))
+        .InitialURL(TEXT("http://localhost:8080/maps/") + InArgs._MapName + TEXT("/objs/") + InArgs._ObjName)
         .OnLoadCompleted(FSimpleDelegate::CreateSP(this, &STrialsRecordsMenu::OnLoadRecordsCompleted))
         .OnLoadError(FSimpleDelegate::CreateSP(this, &STrialsRecordsMenu::OnLoadRecordsError));
 
@@ -27,11 +27,8 @@ void STrialsRecordsMenu::Construct(const FArguments& InArgs)
             ]
         ];
 
-    RecordsWebBrowser->LoadURL(TEXT("http://localhost:8080/maps/STR-Temple/"));
-
     AUTGameState* UTGameState = (PlayerOwner.IsValid() && PlayerOwner->GetWorld() != nullptr) ? PlayerOwner->GetWorld()->GetGameState<AUTGameState>() : nullptr;
     if (UTGameState != nullptr) UTGameState->bLocalMenusAreActive = true;
-
     FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EKeyboardFocusCause::Keyboard);
 }
 
