@@ -47,51 +47,50 @@ void UUTHUDWidget_Objective::Draw_Implementation(float DeltaTime)
     auto* GameState = Cast<ATrialsGameState>(UTGameState);
     if (GameState == nullptr) return;
 
-    if (Cast<ATrialsPlayerController>(UTPlayerOwner) != nullptr)
+    auto* TPlayerOwner = static_cast<ATrialsPlayerController*>(UTPlayerOwner);
+    if (TPlayerOwner->bHasScoredReplayData)
     {
-        if (UTCharacterOwner == nullptr && static_cast<ATrialsPlayerController*>(UTPlayerOwner)->bHasScoredReplayData)
-        {
-            FText RequestRestartLabel = UTHUDOwner->FindKeyMappingTo("RequestRestart");
-            FText& RallyLabel = UTHUDOwner->RallyLabel;
+        FText RequestRestartLabel = UTHUDOwner->FindKeyMappingTo("RequestRestart");
+        FText& RallyLabel = UTHUDOwner->RallyLabel;
 
-            FFormatNamedArguments Args;
-            Args.Add(TEXT("keybind"), RequestRestartLabel.ToString() == TEXT("<none>") ? RallyLabel : RequestRestartLabel);
+        FFormatNamedArguments Args;
+        Args.Add(TEXT("keybind"), RequestRestartLabel.ToString() == TEXT("<none>") ? RallyLabel : RequestRestartLabel);
 
-            FHUDRenderObject_Text ReplayText;
-            ReplayText.bHidden = false; // where the fuck is this set to TRUE?
-            ReplayText.Font = TimerText.Font;
+        FHUDRenderObject_Text ReplayText;
+        ReplayText.bHidden = false; // where the fuck is this set to TRUE?
+        ReplayText.Font = StatusText.Font;
 
-            ReplayText.Text = FText::Format(FText::FromString(TEXT("(Press [{keybind}] to view Replay)")), Args);
-            ReplayText.Position.X = 0.5;
-            ReplayText.Position.Y = 0.2;
-            ReplayText.HorzPosition = ETextHorzPos::Center;
-            RenderObj_Text(ReplayText);
-            return;
-        }
+        ReplayText.Text = FText::Format(FText::FromString(TEXT("(Press [{keybind}] to view Replay)")), Args);
+        ReplayText.Position.X = 0.5;
+        ReplayText.Position.Y = 16;
+        ReplayText.HorzPosition = ETextHorzPos::Center;
+        RenderObj_Text(ReplayText);
+        return;
+    }
         
-        if (UTCharacterOwner)
-        {
-            FHUDRenderObject_Text ResetText;
-            ResetText.bHidden = false;
-            ResetText.Font = TimerText.Font;
+    if (UTCharacterOwner)
+    {
+        FHUDRenderObject_Text ResetText;
+        ResetText.bHidden = false;
+        ResetText.Font = TimerText.Font;
+        ResetText.TextScale = 0.5;
 
-            float ResetTime = UTCharacterOwner->UTCharacterMovement->DodgeResetTime - UTCharacterOwner->UTCharacterMovement->GetCurrentMovementTime();
-            if (ResetTime > -1.0)
+        float ResetTime = UTCharacterOwner->UTCharacterMovement->DodgeResetTime - UTCharacterOwner->UTCharacterMovement->GetCurrentMovementTime();
+        if (ResetTime > -1.0)
+        {
+            if (UTCharacterOwner->UTCharacterMovement->bIsDodging)
             {
-                if (UTCharacterOwner->UTCharacterMovement->bIsDodging)
-                {
-                    ResetText.RenderColor = FLinearColor::Gray;
-                }
-                else if (ResetTime <= 0.0)
-                {
-                    ResetText.RenderColor = FLinearColor::Green;
-                }
-                ResetText.Text = ATrialsTimerState::FormatTime(ResetTime);
-                ResetText.Position.X = 0.5;
-                ResetText.Position.Y = 1080;
-                ResetText.HorzPosition = ETextHorzPos::Center;
-                RenderObj_Text(ResetText);
+                ResetText.RenderColor = FLinearColor::Gray;
             }
+            else if (ResetTime <= 0.0)
+            {
+                ResetText.RenderColor = FLinearColor::Green;
+            }
+            ResetText.Text = ATrialsTimerState::FormatTime(ResetTime);
+            ResetText.Position.X = 0.5;
+            ResetText.Position.Y = 540;
+            ResetText.HorzPosition = ETextHorzPos::Center;
+            RenderObj_Text(ResetText);
         }
     }
 
@@ -232,32 +231,20 @@ void UUTHUDWidget_Objective::DrawStatus(float DeltaTime)
     }
 }
 
+// Based on CTFFlagStatus
 void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector PlayerViewPoint, FRotator PlayerViewRotation, ATrialsObjectiveTarget* Target)
 {
     bScaleByDesignedResolution = false;
-    IconTemplate.RenderColor = Target->Objective && Target->Objective->IsLocked(UTPlayerOwner)
-        ? ATrialsTimerState::NegativeColor // Locked color?
-        : ATrialsTimerState::IdleColor; // Unlocked color?
-
-    // Draw the flag / flag base in the world
-    float WorldRenderScale = RenderScale * MaxIconScale;
-    float OldAlpha = IconTemplate.RenderOpacity;
-
-    FVector WorldPosition = Target->GetActorLocation() + FVector(0.f, 0.f, 128 * 0.75f);
-    FVector ViewDir = PlayerViewRotation.Vector();
     float Dist = (Target->GetActorLocation() - PlayerViewPoint).Size();
+    float WorldRenderScale = RenderScale * MaxIconScale;
     float Edge = CircleTemplate.GetWidth()*WorldRenderScale;
     bool bDrawEdgeArrow = false;
+    FVector WorldPosition = Target->GetActorLocation() + FVector(0.f, 0.f, 128 * 0.75f);
+    FVector ViewDir = PlayerViewRotation.Vector();
     FVector DrawScreenPosition = GetAdjustedScreenPosition(WorldPosition, PlayerViewPoint, ViewDir, Dist, Edge, bDrawEdgeArrow);
 
     float PctFromCenter = (DrawScreenPosition - FVector(0.5f*GetCanvas()->ClipX, 0.5f*GetCanvas()->ClipY, 0.f)).Size() / GetCanvas()->ClipX;
     float CurrentWorldAlpha = InWorldAlpha * FMath::Min(6.f*PctFromCenter, 1.f);
-
-    // don't overlap player beacon
-    UFont* TinyFont = AUTHUD::StaticClass()->GetDefaultObject<AUTHUD>()->TinyFont;
-    float X, Y;
-    float Scale = Canvas->ClipX / 1920.f;
-    Canvas->TextSize(TinyFont, FString("+999   A999"), X, Y, Scale, Scale);
 
     if (!bDrawEdgeArrow)
     {
@@ -265,33 +252,29 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
         float ActualDistSq = FMath::Square(DrawScreenPosition.X - 0.5f*GetCanvas()->ClipX) + FMath::Square(DrawScreenPosition.Y - 0.5f*GetCanvas()->ClipY);
         if (ActualDistSq > MinDistSq)
         {
-            DrawScreenPosition.Y -= 1.5f*Y;
+            DrawScreenPosition.Y -= 1.5f*IconTemplate.GetHeight();
         }
     }
     DrawScreenPosition.X -= RenderPosition.X;
     DrawScreenPosition.Y -= RenderPosition.Y;
 
+    float OldAlpha = IconTemplate.RenderOpacity;
     TitleItem.RenderOpacity = CurrentWorldAlpha;
     DetailsItem.RenderOpacity = CurrentWorldAlpha;
     IconTemplate.RenderOpacity = CurrentWorldAlpha;
     CircleTemplate.RenderOpacity = CurrentWorldAlpha;
     CircleBorderTemplate.RenderOpacity = CurrentWorldAlpha;
 
-    RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* WorldRenderScale, CircleTemplate.GetHeight()* WorldRenderScale);
+    IconTemplate.RenderColor = Target->Objective && Target->Objective->IsLocked(UTPlayerOwner)
+        ? ATrialsTimerState::NegativeColor // Locked color?
+        : ATrialsTimerState::IdleColor; // Unlocked color?
 
+    RenderObj_TextureAt(CircleTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleTemplate.GetWidth()* WorldRenderScale, CircleTemplate.GetHeight()* WorldRenderScale);
     RenderObj_TextureAt(CircleBorderTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, CircleBorderTemplate.GetWidth()* WorldRenderScale, CircleBorderTemplate.GetHeight()* WorldRenderScale);
 
     if (bDrawEdgeArrow)
     {
         DrawEdgeArrow(WorldPosition, PlayerViewPoint, PlayerViewRotation, DrawScreenPosition, CurrentWorldAlpha, WorldRenderScale);
-
-        FFormatNamedArguments Args;
-        FText NumberText = FText::AsNumber(int32(0.01f*Dist));
-        Args.Add("Dist", NumberText);
-
-        DetailsItem.RenderColor = ATrialsTimerState::IdleColor;
-        DetailsItem.Text = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "{Dist}m"), Args);
-        RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
     }
     else
     {
@@ -304,27 +287,17 @@ void UUTHUDWidget_Objective::DrawObjWorld(ATrialsGameState* GameState, FVector P
             }
             else if (ViewingPlayerState->ActiveObjective == Target->Objective)
             {
-                auto* TimerState = ViewingPlayerState->TimerState;
-                if (TimerState != nullptr)
-                {
-                    bool IsActive = TimerState->State == TS_Active;
-                    float RecordTime = TimerState->GetRecordTime();
-                    float Timer = RecordTime == 0? TimerState->GetTimer() : TimerState->GetRemainingTime();
+                FFormatNamedArguments Args;
+                FText NumberText = FText::AsNumber(int32(0.01f*Dist));
+                Args.Add("Dist", NumberText);
 
-                    FLinearColor TimerColor = IsActive
-                        ? ATrialsTimerState::GetTimerColor(Timer)
-                        : ATrialsTimerState::IdleColor;
-                    DetailsItem.RenderColor = TimerColor;
-
-                    FText TimeText = ViewingPlayerState->FormatTime(IsActive ? Timer : RecordTime);
-                    DetailsItem.Text = TimeText;
-                    RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
-                }
+                DetailsItem.RenderColor = ATrialsTimerState::IdleColor;
+                DetailsItem.Text = FText::Format(NSLOCTEXT("Trials", "ObjectiveDetails", "{Dist}m"), Args);
+                RenderObj_Text(DetailsItem, FVector2D(DrawScreenPosition));
             }
         }
-
-        RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
     }
+    RenderObj_TextureAt(IconTemplate, DrawScreenPosition.X, DrawScreenPosition.Y, 1.25f*IconTemplate.GetWidth()*WorldRenderScale, 1.25f*IconTemplate.GetHeight()* WorldRenderScale);
 
     TitleItem.RenderOpacity = OldAlpha;
     DetailsItem.RenderOpacity = OldAlpha;
@@ -372,7 +345,7 @@ FVector UUTHUDWidget_Objective::GetAdjustedScreenPosition(const FVector& WorldPo
 
 void UUTHUDWidget_Objective::DrawEdgeArrow(FVector InWorldPosition, FVector PlayerViewPoint, FRotator PlayerViewRotation, FVector InDrawScreenPosition, float CurrentWorldAlpha, float WorldRenderScale)
 {
-    ArrowTemplate.RenderScale = 1.1f * WorldRenderScale;
+    ArrowTemplate.RenderScale = 1.1f*WorldRenderScale;
     ArrowTemplate.RenderOpacity = CurrentWorldAlpha;
     ArrowTemplate.RenderColor = IconTemplate.RenderColor;
     float RotYaw = FMath::Acos(PlayerViewRotation.Vector() | (InWorldPosition - PlayerViewPoint).GetSafeNormal()) * 180.f / PI;
