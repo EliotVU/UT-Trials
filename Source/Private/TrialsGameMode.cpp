@@ -58,7 +58,6 @@ void ATrialsGameMode::APIReady()
     {
         It->UpdateRecordState(CurrentMapInfo.Name);
     }
-
 }
 
 void ATrialsGameMode::BeginPlay()
@@ -77,8 +76,9 @@ void ATrialsGameMode::PostLogin(APlayerController* NewPlayer)
         FLoginInfo LoginInfo;
         LoginInfo.ProfileId = PS->UniqueId->ToString();
         LoginInfo.Name = PS->PlayerName;
+        LoginInfo.PlayerIp = NewPlayer->GetPlayerNetworkAddress();
 
-        RecordsAPI->LoginPlayer(PS->UniqueId->ToString(), PS->PlayerName, [this, PS](const FPlayerInfo& Result)
+        RecordsAPI->LoginPlayer(LoginInfo, [this, PS](const FPlayerInfo& Result)
         {
             UE_LOG(UT, Log, TEXT("Logged in player %s from country %s"), *Result.Name, *Result.CountryCode);
             PS->PlayerNetId = Result._id;

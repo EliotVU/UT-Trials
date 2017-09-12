@@ -140,20 +140,15 @@ void ATrialsAPI::Authenticate(const FString& APIBaseURL, const FString& APIToken
         [this, OnSuccess](const FAPIResult& Data) {
             AuthToken = Data->GetStringField("token");
 
-
             if (OnSuccess)
                 OnSuccess();
         }
     );
 }
 
-void ATrialsAPI::LoginPlayer(const FString& UniqueId, const FString& Name, const FLoginPlayer& OnSuccess)
+void ATrialsAPI::LoginPlayer(const FLoginInfo& LoginInfo, const FLoginPlayer& OnSuccess)
 {
-    checkSlow(!UniqueId.IsEmpty());
-
-    FLoginInfo LoginInfo;
-    LoginInfo.ProfileId = UniqueId;
-    LoginInfo.Name = Name;
+    checkSlow(!LoginInfo.UniqueId.IsEmpty());
 
     Post(TEXT("api/players/login"), ToJSON(LoginInfo), [this, OnSuccess](const FAPIResult& Result) {
         FPlayerInfo PlayerInfo;

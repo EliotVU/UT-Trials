@@ -31,6 +31,9 @@ public:
 
     UPROPERTY()
     FString Name;
+
+    UPROPERTY()
+    FString PlayerIp;
 };
 
 USTRUCT()
@@ -190,7 +193,7 @@ public:
     void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnSuccess);
 
     typedef TFunction<void(FPlayerInfo& PlayerInfo)> FLoginPlayer;
-    void LoginPlayer(const FString& UniqueId, const FString& Name, const FLoginPlayer& OnSuccess = nullptr);
+    void LoginPlayer(const FLoginInfo& LoginInfo, const FLoginPlayer& OnSuccess = nullptr);
 
     typedef TFunction<void(FMapInfo& MapInfo)> FGetMap;
     void GetMap(const FString MapName, const FGetMap& OnSuccess);
