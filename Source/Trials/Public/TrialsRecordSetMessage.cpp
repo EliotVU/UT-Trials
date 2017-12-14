@@ -62,3 +62,63 @@ void UTrialsRecordSetMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch,
         Args.Add("TimeDiff", FText::FromString(TimeDiffStr));
     }
 }
+
+UTrialsRecordSetRemoteMessage::UTrialsRecordSetRemoteMessage(const class FObjectInitializer& ObjectInitializer)
+    : Super(ObjectInitializer)
+{
+    MessageArea = FName(TEXT("ConsoleMessage"));
+    MessageSlot = FName(TEXT("DeathMessage"));
+
+    Lifetime = 2.0f;
+    bIsConsoleMessage = true;
+
+    FontSizeIndex = 3;
+}
+
+FText UTrialsRecordSetRemoteMessage::GetText(int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
+{
+    return FText::FromString(TEXT("{TimeDiff}"));
+}
+
+FLinearColor UTrialsRecordSetRemoteMessage::GetMessageColor_Implementation(int32 Switch) const
+{
+    switch (Switch)
+    {
+        // Top record
+    case 0:
+        return ATrialsTimerState::LeadColor;
+
+        // top or personal record
+    case 3:
+    case 4:
+        return ATrialsTimerState::PositiveColor;
+
+        // tie, top or personal
+    case 1:
+        return ATrialsTimerState::TieColor;
+
+        // Negative, top and personal.
+    case 2:
+        return ATrialsTimerState::NegativeColor;
+
+    }
+    return Super::GetMessageColor_Implementation(Switch);
+}
+
+void UTrialsRecordSetRemoteMessage::GetArgs(FFormatNamedArguments& Args, int32 Switch, bool bTargetsPlayerState1, APlayerState* RelatedPlayerState_1, APlayerState* RelatedPlayerState_2, UObject* OptionalObject) const
+{
+    auto* TimerState = Cast<ATrialsTimerState>(OptionalObject);
+    if (TimerState != nullptr)
+    {
+        bool bShouldCountUp = (Switch == 3 || TimerState->GetRecordTime() == 0.00);
+        float TimeDiff = bShouldCountUp
+            ? TimerState->GetTimer()
+            : TimerState->GetRemainingTime();
+        FString TimeDiffStr = TimerState->FormatTime(TimeDiff).ToString();
+        if (TimeDiff > 0.0 && !bShouldCountUp)
+        {
+            TimeDiffStr = "+" + TimeDiffStr;
+        }
+        Args.Add("TimeDiff", FText::FromString(TimeDiffStr));
+    }
+}

@@ -19,7 +19,8 @@ namespace UnrealBuildTool.Rules
                     "WebBrowser",
                     "Http",
                     "Json",
-                    "JsonUtilities"
+                    "JsonUtilities",
+                    "WebSocket"
                 }
             );
         }

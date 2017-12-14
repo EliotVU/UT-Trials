@@ -2,6 +2,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Runtime/Online/HTTP/Public/Http.h"
+#include "WebSocketBlueprintLibrary.h"
 
 #include "TrialsAPI.generated.h"
 
@@ -182,12 +183,18 @@ class TRIALS_API ATrialsAPI : public AActor
     
 public:	
     FString BaseURL;
+    FString WSURL = TEXT("ws://localhost:8080");
     FString AuthToken;
 
     ATrialsAPI();
 
     void BeginPlay() override;
     void Tick(float DeltaTime) override;
+
+    UWebSocketBase* Listen(const FString& Path) const
+    {
+        return UWebSocketBlueprintLibrary::Connect(WSURL + Path);
+    }
 
     typedef TFunction<void()> FAuthenticate;
     void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnSuccess);
@@ -342,24 +349,6 @@ public:
         });
     }
 
-private:
-    TSharedRef<IHttpRequest> Fetch(
-        const FString Path, 
-        const FAPIOnResult& OnSuccess,
-        const FAPIOnError& OnError = [](FAPIError Error) -> void {
-            UE_LOG(UT, Error, TEXT("An error occurred! %s"), *Error);
-        }
-    );
-
-    TSharedRef<IHttpRequest> Post(
-        const FString Path,
-        const FString Content,
-        const FAPIOnResult& OnSuccess,
-        const FAPIOnError& OnError = [](FAPIError Error) -> void {
-            UE_LOG(UT, Error, TEXT("An error occurred! %s"), *Error);
-        }
-    );
-
     template<typename OutStructType>
     static bool FromJSON(const TSharedPtr<FJsonObject>& Data, OutStructType* OutStruct)
     {
@@ -377,6 +366,24 @@ private:
         }
         return JsonOut;
     }
+
+private:
+    TSharedRef<IHttpRequest> Fetch(
+        const FString Path, 
+        const FAPIOnResult& OnSuccess,
+        const FAPIOnError& OnError = [](FAPIError Error) -> void {
+            UE_LOG(UT, Error, TEXT("An error occurred! %s"), *Error);
+        }
+    );
+
+    TSharedRef<IHttpRequest> Post(
+        const FString Path,
+        const FString Content,
+        const FAPIOnResult& OnSuccess,
+        const FAPIOnError& OnError = [](FAPIError Error) -> void {
+            UE_LOG(UT, Error, TEXT("An error occurred! %s"), *Error);
+        }
+    );
 
     TSharedRef<IHttpRequest> CreateRequest(const FString& Verb, const FString& Path) const;
     void SendRequest(TSharedRef<IHttpRequest>& HttpRequest, const TFunction<bool(const FHttpResponsePtr& HttpResponse)>& OnComplete);

@@ -27,6 +27,12 @@ class ATrialsGameMode : public AUTGameMode
     UPROPERTY(Config)
     FString RecordsAPIToken;
 
+    UPROPERTY()
+    UWebSocketBase* RecsListener;
+
+    UFUNCTION()
+    void OnReceiveRecsEvent(const FString& data);
+
     void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
     virtual void APIReady();
 
@@ -47,6 +53,12 @@ class ATrialsGameMode : public AUTGameMode
 
     UPROPERTY(BlueprintAssignable, Category = Objective, BlueprintAuthorityOnly)
     FObjectiveRecordSet OnObjectiveRecordSet;
+
+    UFUNCTION(Exec)
+    void Test(FString Type)
+    {
+        Broadcast(this, FString(TEXT("New record set on client ")), FName(*Type));
+    }
 
 private:
     FMapInfo CurrentMapInfo;

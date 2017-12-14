@@ -7,6 +7,7 @@
 #include "TrialsObjectiveCompleteMessage.h"
 #include "TrialsAPI.h"
 #include "TrialsRecordSetMessage.h"
+#include "WebSocketBase.h"
 
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -57,6 +58,34 @@ void ATrialsGameMode::APIReady()
     for (TActorIterator<ATrialsObjective> It(GetWorld()); It; ++It)
     {
         It->UpdateRecordState(CurrentMapInfo.Name);
+    }
+
+    RecsListener = RecordsAPI->Listen("/recs");
+    RecsListener->OnReceiveData.AddDynamic(this, &ATrialsGameMode::OnReceiveRecsEvent);
+}
+
+// event = ISocketEvent { message: string, data: any as string }
+void ATrialsGameMode::OnReceiveRecsEvent(const FString& Event)
+{
+    Broadcast(this, FString(TEXT("Received websocket event: ")) + Event);
+
+    TSharedPtr<FJsonObject> JsonObject;
+    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Event);
+    if (!FJsonSerializer::Deserialize(Reader, JsonObject))
+    {
+        return;
+    }
+
+    TSharedPtr<FJsonValue> Message = JsonObject->TryGetField(TEXT("message"));
+    if (Message->AsString() == TEXT("post"))
+    {
+        const TSharedPtr<FJsonObject>* Data;
+        JsonObject->TryGetObjectField(TEXT("data"), Data);
+
+        FRecordInfo RecInfo;
+        ATrialsAPI::FromJSON(*Data, &RecInfo);
+
+        Say(FString(TEXT("New record set on ")) + RecInfo.Client.Name + FString(TEXT(" by ")) + RecInfo.Player.Name);
     }
 }
 
