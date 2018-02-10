@@ -7,6 +7,8 @@
 #include "ModuleManager.h"
 #include "ModuleInterface.h"
 
+#include "WebSocketsModule.h"
+
 class FTrialsPlugin : public IModuleInterface
 {
 	/** IModuleInterface implementation */
@@ -18,14 +20,11 @@ IMPLEMENT_MODULE( FTrialsPlugin, Trials )
 
 void FTrialsPlugin::StartupModule()
 {
-	
-}
+    FModuleManager::LoadModuleChecked<FWebSocketsModule>("WebSockets");
 
+}
 
 void FTrialsPlugin::ShutdownModule()
 {
 	
 }
-
-
-

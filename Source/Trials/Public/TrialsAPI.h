@@ -1,8 +1,8 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
-#include "Runtime/Online/HTTP/Public/Http.h"
-#include "WebSocketBlueprintLibrary.h"
+#include "Http.h"
+#include "IWebSocket.h"
 
 #include "TrialsAPI.generated.h"
 
@@ -183,7 +183,6 @@ class TRIALS_API ATrialsAPI : public AActor
     
 public:	
     FString BaseURL;
-    FString WSURL = TEXT("ws://localhost:8080");
     FString AuthToken;
 
     ATrialsAPI();
@@ -191,10 +190,7 @@ public:
     void BeginPlay() override;
     void Tick(float DeltaTime) override;
 
-    UWebSocketBase* Listen(const FString& Path) const
-    {
-        return UWebSocketBlueprintLibrary::Connect(WSURL + Path);
-    }
+    static TSharedRef<IWebSocket> Listen(const FString& URL, const FString& Path);
 
     typedef TFunction<void()> FAuthenticate;
     void Authenticate(const FString& APIBaseURL, const FString& APIKey, const FString& ClientName, const FAuthenticate& OnSuccess);
@@ -207,7 +203,7 @@ public:
 
     /*
     * Fetches data of an objective, including record time and a brief list of top records.
-    * If the objective isn't registered yet, it shall be created.
+    * If the objective isn't registered yet, it will be registered.
     */
     void GetObj(const FString& MapName, const FString& ObjName, const TFunction<void(const FObjInfo& ObjInfo)> OnSuccess = nullptr)
     {
@@ -261,9 +257,9 @@ public:
 
     void GetPlayerRecord(const FString& ObjId, const FString& PlayerId, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess)
     {
-        Fetch(TEXT("api/recs/") 
+        Fetch(TEXT("api/objs/") 
             + FGenericPlatformHttp::UrlEncode(ObjId) 
-            + TEXT("/")
+            + TEXT("/records/players/")
             + FGenericPlatformHttp::UrlEncode(PlayerId),
             [OnSuccess](const FAPIResult& Data)
             {
@@ -279,10 +275,13 @@ public:
     void SubmitRecord(const FString& ObjId, FRecordInfo& RecordInfo, const TFunction<void(const FRecordInfo& RecInfo)> OnSuccess = nullptr)
     {
         checkSlow(!ObjId.IsEmpty());
-        checkSlow(!PlayerId.IsEmpty());
+        checkSlow(!RecordInfo.Player._id.IsEmpty());
         
-        Post(TEXT("api/recs/") 
-            + FGenericPlatformHttp::UrlEncode(ObjId), ToJSON(RecordInfo),
+        Post(TEXT("api/objs/") 
+            + FGenericPlatformHttp::UrlEncode(ObjId)
+            + TEXT("/records/players/")
+            + FGenericPlatformHttp::UrlEncode(RecordInfo.Player._id),
+            ToJSON(RecordInfo),
             [OnSuccess](const FAPIResult Result) {
                 FRecordInfo RecInfo;
                 FromJSON(Result, &RecInfo);
@@ -299,10 +298,11 @@ public:
         checkSlow(!PlayerId.IsEmpty());
 
         auto HttpRequest = CreateRequest(TEXT("POST"),
-            TEXT("api/recs/ghost/")
+            TEXT("api/objs/")
             + FGenericPlatformHttp::UrlEncode(ObjId)
-            + TEXT("/")
+            + TEXT("/records/players/")
             + FGenericPlatformHttp::UrlEncode(PlayerId)
+            + TEXT("/ghost")
         );
 
         HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));
@@ -324,10 +324,11 @@ public:
         checkSlow(!PlayerId.IsEmpty());
 
         auto HttpRequest = CreateRequest(TEXT("GET"), 
-            TEXT("api/recs/ghost/") 
+            TEXT("api/objs/") 
             + FGenericPlatformHttp::UrlEncode(ObjId)
-            + TEXT("/")
+            + TEXT("/records/players/")
             + FGenericPlatformHttp::UrlEncode(PlayerId)
+            + TEXT("/ghost")
         );
 
         HttpRequest->SetHeader(TEXT("Content-Type"), TEXT("application/octet-stream"));

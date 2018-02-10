@@ -2,6 +2,8 @@
 
 #include "TrialsAPI.h"
 
+#include "WebSocketsModule.h"
+
 ATrialsAPI::ATrialsAPI()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -15,6 +17,11 @@ void ATrialsAPI::BeginPlay()
 void ATrialsAPI::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+}
+
+TSharedRef<IWebSocket> ATrialsAPI::Listen(const FString& URL, const FString& Path)
+{
+    return FWebSocketsModule::Get().CreateWebSocket(URL + Path);
 }
 
 // API based on UTMcpUtils.h

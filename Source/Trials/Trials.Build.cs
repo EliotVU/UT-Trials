@@ -17,10 +17,15 @@ namespace UnrealBuildTool.Rules
                     "Slate",
                     "SlateCore",
                     "WebBrowser",
-                    "Http",
+                    "HTTP",
                     "Json",
-                    "JsonUtilities",
-                    "WebSocket"
+                    "JsonUtilities"
+                }
+            );
+
+            PrivateDependencyModuleNames.AddRange(
+                new string[] {
+                    "WebSockets"
                 }
             );
         }

@@ -4,6 +4,8 @@
 #include "TrialsObjectiveInfo.h"
 #include "TrialsAPI.h"
 
+#include "IWebSocket.h"
+
 #include "TrialsGameMode.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FObjectiveCompleted, ATrialsObjective*, Objective, AUTPlayerController*, Player);
@@ -27,8 +29,11 @@ class ATrialsGameMode : public AUTGameMode
     UPROPERTY(Config)
     FString RecordsAPIToken;
 
+    UPROPERTY(Config)
+    FString RecordsSocketURL;
+
     UPROPERTY()
-    UWebSocketBase* RecsListener;
+    FString RecordsSocketPath = TEXT("recs");
 
     UFUNCTION()
     void OnReceiveRecsEvent(const FString& data);
@@ -62,4 +67,6 @@ class ATrialsGameMode : public AUTGameMode
 
 private:
     FMapInfo CurrentMapInfo;
+
+    TSharedPtr<IWebSocket> RecsListener;
 };

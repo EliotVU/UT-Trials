@@ -5,9 +5,7 @@
 #include "TrialsPlayerState.h"
 #include "TrialsHUD.h"
 #include "TrialsObjectiveCompleteMessage.h"
-#include "TrialsAPI.h"
 #include "TrialsRecordSetMessage.h"
-#include "WebSocketBase.h"
 
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -60,8 +58,12 @@ void ATrialsGameMode::APIReady()
         It->UpdateRecordState(CurrentMapInfo.Name);
     }
 
-    RecsListener = RecordsAPI->Listen("/recs");
-    RecsListener->OnReceiveData.AddDynamic(this, &ATrialsGameMode::OnReceiveRecsEvent);
+    RecsListener = ATrialsAPI::Listen(RecordsSocketURL, RecordsSocketPath);
+    if (RecsListener.IsValid())
+    {
+        RecsListener->OnMessage().AddUObject(this, &ATrialsGameMode::OnReceiveRecsEvent);
+        RecsListener->Connect();
+    }
 }
 
 // event = ISocketEvent { message: string, data: any as string }
