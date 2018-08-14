@@ -24,11 +24,6 @@
         "Win64",
         "Linux"
       ]
-    },
-	{
-		"Name": "WebSocket",
-		"Type": "Runtime",
-		"LoadingPhase": "Default"
-	}
+    }
   ]
 }

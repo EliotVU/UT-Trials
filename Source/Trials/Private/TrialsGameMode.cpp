@@ -7,6 +7,19 @@
 #include "TrialsObjectiveCompleteMessage.h"
 #include "TrialsRecordSetMessage.h"
 
+#if UE_BUILD_SHIPPING
+#pragma warning(push)
+#pragma warning(disable: 4273)
+
+void AUTGameMode::BeginLineUp(const FString& LineUpTypeName) {
+}
+
+void AUTGameMode::EndLineUp() {
+}
+
+#pragma warning(pop)
+#endif
+
 ATrialsGameMode::ATrialsGameMode(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
@@ -291,3 +304,4 @@ void ATrialsGameMode::ScoreTrialObjective(ATrialsObjective* Obj, float Timer, AU
 
     BroadcastLocalized(this, UTrialsRecordSetMessage::StaticClass(), RecordSwitch, PlayerState, nullptr, PlayerState->TimerState);
 }
+

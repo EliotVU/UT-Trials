@@ -53,7 +53,7 @@ ATrialsObjective::ATrialsObjective(const class FObjectInitializer& ObjectInitial
     bCanSubmitRecords = false;
 }
 
-#ifdef WITH_EDITOR
+#if WITH_EDITOR
 
 #include "UObjectToken.h"
 #include "MapErrors.h"

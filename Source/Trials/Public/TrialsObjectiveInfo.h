@@ -140,7 +140,7 @@ class TRIALS_API ATrialsObjective : public AInfo
     UPROPERTY(BlueprintAssignable, Category = Objective)
     FObjectiveLockChange OnLockedChange;
 
-#ifdef WITH_EDITOR
+#if WITH_EDITOR
     void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
     void PostRegisterAllComponents() override;
     void CheckForErrors() override;
