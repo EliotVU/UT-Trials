@@ -20,6 +20,12 @@ Trials C++ Plugin for Unreal Tournament.
 - [x] Backend to preserve best times and ghost replays data (not included in this repository)
 - [x] Frontend to view best times online on the web in realtime (not included in this repository)
 
+## Media
+
+**(Video) Short demonstration of UTTrials on STR-Temple (the UTTrials version in this video is however not up to date)**
+
+[![Watch the video](https://img.youtube.com/vi/0-t2hNynSo4/maxresdefault.jpg)](https://youtu.be/0-t2hNynSo4)
+
 ## Building
 
 The plugin is currently a very early work-in-progress, and is thus not yet available as a packaged .pak file.
