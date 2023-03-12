@@ -26,6 +26,16 @@ Trials C++ Plugin for Unreal Tournament.
 
 [![Watch the video](https://img.youtube.com/vi/0-t2hNynSo4/maxresdefault.jpg)](https://youtu.be/0-t2hNynSo4)
 
+What's the stuff on the HUD?
+
+- At the top center you it reads "Level 1" which is the title of the current active objective (or level).
+  - To the right the best time of that objective is displayed.
+  - Below it the current running timer is displayed.
+- At the top right the realtime leaderboard for the current active objective (or level) is displayed.
+  - The first row displays the very best time with the player's name and to the right the time that the player had set.
+  - Theoretically the second row would display the second best time and so on!
+  - The last row displays the personal best time that you have set.
+
 ## Building
 
 The plugin is currently a very early work-in-progress, and is thus not yet available as a packaged .pak file.
